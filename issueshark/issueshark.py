@@ -1,9 +1,5 @@
 import logging
 import timeit
-import time
-
-import datetime
-import requests
 
 from mongoengine import connect
 from issueshark.backends.basebackend import BaseBackend

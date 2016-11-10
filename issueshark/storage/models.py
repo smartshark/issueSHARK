@@ -1,5 +1,5 @@
-from mongoengine import Document, StringField, DateTimeField, ListField, DateTimeField, IntField, BooleanField, \
-    ObjectIdField, signals
+from mongoengine import Document, StringField, ListField, DateTimeField, IntField, ObjectIdField
+
 
 class Issue(Document):
     meta = {

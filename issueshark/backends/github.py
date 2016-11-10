@@ -1,11 +1,9 @@
 import time
 
 import sys
-import timeit
 import datetime
 
-from mongoengine import NotUniqueError, DoesNotExist
-from pymongo.errors import DuplicateKeyError
+from mongoengine import DoesNotExist
 
 from issueshark.backends.basebackend import BaseBackend
 import logging
@@ -206,7 +204,7 @@ class GithubBackend(BaseBackend):
             logger.error("Problem with getting data from github via url %s. Error: %s" % (url, resp.json()['message']))
 
         # It can happen that we exceed the github api limit. If we have only 1 request left we will wait
-        if int(resp.headers['X-RateLimit-Remaining'] == 1):
+        if int(resp.headers['X-RateLimit-Remaining']) <= 1:
 
             # We get the reset time (UTC Epoch seconds)
             time_when_reset = datetime.datetime.fromtimestamp(float(resp.headers['X-RateLimit-Reset']))
@@ -215,7 +213,9 @@ class GithubBackend(BaseBackend):
             # Then we substract and add 10 seconds to it (so that we do not request directly at the threshold
             waiting_time = ((time_when_reset-now).total_seconds())+10
 
-            logger.info("Only got one request left on Github API. Waiting for %0.5f seconds...")
+            logger.info("Github API limit exceeded. Waiting for %0.5f seconds..." % waiting_time)
+            time.sleep(waiting_time)
+
             resp = requests.get(url)
 
         logger.debug('Got response: %s' % resp.json())
