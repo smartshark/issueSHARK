@@ -57,6 +57,10 @@ def start():
     parser.add_argument('-i', '--issueurl', help='URL to the bugtracking system.', required=True)
     parser.add_argument('-b', '--backend', help='Backend to use for the issue parsing', default='github',
                         choices=backend_choices)
+    parser.add_argument('-PH', '--proxy-host', help='Proxy hostname or IP address.', default=None)
+    parser.add_argument('-PP', '--proxy-port', help='Port of the proxy to use.', default=None)
+    parser.add_argument('-Pp', '--proxy-password', help='Password to use the proxy (HTTP Basic Auth)', default=None)
+    parser.add_argument('-PU', '--proxy-user', help='Username to use the proxy (HTTP Basic Auth)', default=None)
     parser.add_argument('-t', '--token', help='Token for accessing.')
 
     try:

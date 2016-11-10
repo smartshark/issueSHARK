@@ -44,7 +44,7 @@ class GithubBackend(BaseBackend):
             sys.exit(1)
 
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects.order_by('-updated_at').only('updated_at').first()
+        last_issue = Issue.objects(project_id=project_id).order_by('-updated_at').only('updated_at').first()
         starting_date = None
         if last_issue is not None:
             starting_date = last_issue.updated_at
@@ -192,7 +192,15 @@ class GithubBackend(BaseBackend):
     def _send_request(self, url):
         logger.debug("Sending request to url: %s" % url)
         headers = {'Authorization': 'token %s' % self.config.token}
-        resp = requests.get(url, headers=headers)
+
+        if self.config.use_proxy:
+            proxies = {
+              'http': self.config.get_proxy_string(),
+              'https': self.config.get_proxy_string(),
+            }
+            resp = requests.get(url, headers=headers, proxies=proxies)
+        else:
+            resp = requests.get(url, headers=headers)
 
         if resp.status_code != 200:
             logger.error("Problem with getting data from github via url %s. Error: %s" % (url, resp.json()['message']))
