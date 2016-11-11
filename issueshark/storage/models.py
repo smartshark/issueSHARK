@@ -71,7 +71,7 @@ class Milestone(Document):
 '''
 
 
-class Comment(Document):
+class IssueComment(Document):
     meta = {
         'indexes': [
             'issue_id',
@@ -116,7 +116,7 @@ class Project(Document):
     url = StringField(max_length=400, required=True, unique=True)
     name = StringField(max_length=100, required=True)
     repositoryType = StringField(max_length=15)
-
+    issue_urls = ListField(StringField())
 
 
 class Commit(Document):

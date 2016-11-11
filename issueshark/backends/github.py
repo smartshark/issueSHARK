@@ -10,7 +10,7 @@ import logging
 import requests
 import dateutil.parser
 
-from issueshark.storage.models import Issue, People, Project, Comment, Commit, Event
+from issueshark.storage.models import Issue, People, Project, IssueComment, Commit, Event
 
 logger = logging.getLogger('backend')
 STATE_ALL = 'all'
@@ -32,14 +32,8 @@ class GithubBackend(BaseBackend):
 
         self.people = {}
 
-    def process(self):
+    def process(self, project_id):
         logger.info("Starting the collection process...")
-
-        try:
-            project_id = Project.objects(url=self.config.project_url).get().id
-        except DoesNotExist:
-            logger.error('Project not found. Use vcsSHARK beforehand!')
-            sys.exit(1)
 
         # Get last modification date (since then, we will collect bugs)
         last_issue = Issue.objects(project_id=project_id).order_by('-updated_at').only('updated_at').first()
@@ -142,10 +136,10 @@ class GithubBackend(BaseBackend):
         for raw_comment in comments:
             created_at = dateutil.parser.parse(raw_comment['created_at'])
             try:
-                Comment.objects(system_id=raw_comment['id']).get()
+                IssueComment.objects(system_id=raw_comment['id']).get()
                 continue
             except DoesNotExist:
-                comment = Comment(
+                comment = IssueComment(
                     system_id=raw_comment['id'],
                     issue_id=mongo_issue_id,
                     created_at=created_at,
@@ -156,7 +150,7 @@ class GithubBackend(BaseBackend):
 
         # If comments need to be inserted -> bulk insert
         if comments_to_insert:
-            Comment.objects.insert(comments_to_insert, load_bulk=False)
+            IssueComment.objects.insert(comments_to_insert, load_bulk=False)
 
     def get_issues(self, search_state='all', start_date=None, sorting='asc', pagecount=1):
         target_url = self.config.tracking_url + "?state=" + search_state + "&page=" + str(pagecount) \

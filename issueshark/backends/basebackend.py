@@ -13,7 +13,7 @@ class BaseBackend(metaclass=abc.ABCMeta):
         self.config = cfg
 
     @abc.abstractmethod
-    def process(self):
+    def process(self, project_id):
         pass
 
     @staticmethod

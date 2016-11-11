@@ -1,5 +1,16 @@
 {
-"collections":[  
+"collections":[
+      {
+         "fields":[
+            {
+               "sub_type": "StringType",
+               "type":"ArrayType",
+               "logical_type":"Url",
+               "field_name":"issue_urls"
+            }
+         ],
+         "collection_name":"project"
+      },
       {  
          "fields":[  
             {  
@@ -9,7 +20,8 @@
             },
             {  
                "type":"ObjectIdType",
-               "logical_type":"OID",
+               "logical_type":"RID",
+               "reference_to": "project",
                "field_name":"project_id"
             },
             {  
@@ -54,12 +66,14 @@
             },
             {  
                "type":"ObjectIdType",
-               "logical_type":"OID",
+               "logical_type":"RID",
+               "reference_to": "issue",
                "field_name":"issue_id"
             },
             {  
                "type":"ObjectIdType",
-               "logical_type":"OID",
+               "logical_type":"RID",
+               "reference_to": "people",
                "field_name":"author_id"
             },
             {  
@@ -73,7 +87,7 @@
                "field_name":"created_at"
             }
          ],
-         "collection_name":"comment"
+         "collection_name":"issue_comment"
       },
       {  
          "fields":[  
@@ -89,7 +103,8 @@
             },
             {  
                "type":"ObjectIdType",
-               "logical_type":"OID",
+               "logical_type":"RID",
+               "reference_to": "issue",
                "field_name":"issue_id"
             },
             {  
@@ -114,22 +129,26 @@
             },
             {  
                "type":"ObjectIdType",
-               "logical_type":"OID",
+               "logical_type":"RID",
+               "reference_to": "commit",
                "field_name":"commit_id"
             },
             {  
                "type":"ObjectIdType",
-               "logical_type":"OID",
+               "logical_type":"RID",
+               "reference_to": "people",
                "field_name":"author_id"
             },
             {  
                "type":"ObjectIdType",
-               "logical_type":"OID",
+               "logical_type":"RID",
+               "reference_to": "people",
                "field_name":"assignee_id"
             },
             {  
                "type":"ObjectIdType",
-               "logical_type":"OID",
+               "logical_type":"RID",
+               "reference_to": "people",
                "field_name":"assigner_id"
             }
          ],
