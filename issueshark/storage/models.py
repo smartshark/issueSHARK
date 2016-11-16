@@ -1,4 +1,4 @@
-from mongoengine import Document, StringField, ListField, DateTimeField, IntField, ObjectIdField
+from mongoengine import Document, StringField, ListField, DateTimeField, IntField, ObjectIdField, DictField
 
 
 class Issue(Document):
@@ -9,12 +9,35 @@ class Issue(Document):
         ]
     }
 
-    system_id = IntField(unique_with=['project_id'])
+    system_id = StringField(unique_with=['project_id'])
     project_id = ObjectIdField(unique_with=['system_id'])
     title = StringField()
     desc = StringField()
     created_at = DateTimeField()
     updated_at = DateTimeField()
+
+    issue_type = StringField()
+    priority = StringField()
+    status = StringField()
+    affects_versions = ListField(StringField())
+    components = ListField(StringField())
+    labels = ListField(StringField())
+    resolution = StringField()
+    fix_versions = ListField(StringField())
+    assignee = ObjectIdField()
+    issue_links = ListField(DictField())
+    original_time_estimate=IntField()
+    environment=StringField()
+
+    def __str__(self):
+        return "System_id: %s, project_id: %s, title: %s, desc: %s, created_at: %s, updated_at: %s, issue_type: %s," \
+               " priority: %s, affects_versions: %s, components: %s, labels: %s, resolution: %s, fix_versions: %s," \
+               "assignee: %s, issue_links: %s, status: %s, time_estimate: %s, environment %s" % (
+            self.system_id, self.project_id, self.title, self.desc, self.created_at, self.updated_at, self.issue_type,
+            self.priority, ','.join(self.affects_versions), ','.join(self.components), ','.join(self.labels),
+            self.resolution, ','.join(self.fix_versions), self.assignee, str(self.issue_links), self.status,
+            str(self.original_time_estimate), self.environment
+        )
 
 
 class Event(Document):
@@ -50,17 +73,22 @@ class Event(Document):
         ]
     }
 
-    system_id = IntField(unique=True)
+    system_id = StringField(unique=True)
     issue_id = ObjectIdField()
     created_at = DateTimeField()
-    label = StringField()
     status = StringField(max_length=50, choices=STATI)
-    commit_id = ObjectIdField()
     author_id = ObjectIdField()
+
+    old_value = StringField()
+    new_value = StringField()
+
+    '''
+    label = StringField()
+    commit_id = ObjectIdField()
     assignee_id = ObjectIdField()
     assigner_id = ObjectIdField()
     milestone = StringField()
-
+    '''
 '''
 class Milestone(Document):
     title = StringField()
@@ -98,6 +126,7 @@ class People(Document):
      #PK: email, name
     email = StringField(max_length=150, required=True, unique_with=['name'])
     name = StringField(max_length=150, required=True, unique_with=['email'])
+    username = StringField(max_length=300)
 
     def __hash__(self):
         return hash(self.name+self.email)

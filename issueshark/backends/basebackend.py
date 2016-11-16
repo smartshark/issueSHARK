@@ -1,6 +1,7 @@
 import abc
 import os
 import sys
+import logging
 
 
 class BaseBackend(metaclass=abc.ABCMeta):
@@ -11,6 +12,10 @@ class BaseBackend(metaclass=abc.ABCMeta):
 
     def __init__(self, cfg):
         self.config = cfg
+        self.debug_level = logging.DEBUG
+
+        if self.config is not None:
+            self.debug_level = self.config.get_debug_level()
 
     @abc.abstractmethod
     def process(self, project_id):

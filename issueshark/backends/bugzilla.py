@@ -1,7 +1,7 @@
 from issueshark.backends.basebackend import BaseBackend
 
 
-class GithubBackend(BaseBackend):
+class BugzillaBackend(BaseBackend):
     @property
     def identifier(self):
         return 'bugzilla'

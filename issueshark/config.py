@@ -1,3 +1,8 @@
+import logging
+
+class ConfigValidationException(Exception):
+    pass
+
 class Config(object):
     def __init__(self, args):
         self.tracking_url = args.issueurl.rstrip('/')
@@ -10,6 +15,9 @@ class Config(object):
         self.password = args.db_password
         self.database = args.db_database
         self.authentication_db = args.db_authentication
+        self.issue_user = args.issue_user
+        self.issue_password = args.issue_password
+        self.debug = args.debug
 
         if args.proxy_host.startswith('http://'):
             self.proxy_host = args.proxy_host[7:]
@@ -20,13 +28,58 @@ class Config(object):
         self.proxy_username = args.proxy_user
         self.proxy_password = args.proxy_password
 
-    def get_proxy_string(self):
+        self._validate_config()
+
+    def _validate_config(self):
+        if self.token is None and self.issue_user is None:
+            raise ConfigValidationException('Token or issue user and issue password must be set.')
+
+        if self.token is not None and self.issue_user is not None:
+            raise ConfigValidationException('Either token or issue user/password combination is used!')
+
+        if (self.issue_user is not None and self.issue_password is None) or \
+                (self.issue_password is not None and self.issue_user is None):
+            raise ConfigValidationException('Issue user and password must be set if either of them are not None.')
+
+        if (self.proxy_username is not None and self.proxy_password is None) or \
+                (self.proxy_password is not None and self.proxy_username is None):
+            raise ConfigValidationException('Proxy user and password must be set if either of them are not None.')
+
+    def get_debug_level(self):
+        choices = {
+            'DEBUG': logging.DEBUG,
+            'INFO': logging.INFO,
+            'WARNING': logging.WARNING,
+            'ERROR': logging.ERROR,
+            'CRITICAL': logging.CRITICAL
+        }
+
+        return choices[self.debug]
+
+    def _get_proxy_string(self):
         if self.proxy_password is None or self.proxy_username is None:
             return 'http://'+self.proxy_host+':'+self.proxy_port
         else:
             return 'http://'+self.proxy_username+':'+self.proxy_password+'@'+self.proxy_host+':'+self.proxy_port
 
-    def use_proxy(self):
+    def get_proxy_dictionary(self):
+        if self._use_proxy():
+            proxies = {
+                'http': self._get_proxy_string(),
+                'https': self._get_proxy_string()
+            }
+
+            return proxies
+
+        return None
+
+    def use_token(self):
+        if self.token is None:
+            return False
+
+        return True
+
+    def _use_proxy(self):
         if self.proxy_host is None:
             return False
 
@@ -35,7 +88,7 @@ class Config(object):
     def __str__(self):
         return "Config: identifier: %s, token: %s, tracking_url: %s, project_url: %s, host: %s, port: %s, user: %s, " \
                "password: %s, database: %s, authentication_db: %s, proxy_host: %s, proxy_port: %s, proxy_username: %s" \
-               "proxy_password: %s" % \
+               "proxy_password: %s, issue_user: %s, issue_password: %s" % \
                (
                    self.identifier,
                    self.token,
@@ -50,7 +103,9 @@ class Config(object):
                    self.proxy_host,
                    self.proxy_port,
                    self.proxy_username,
-                   self.proxy_password
+                   self.proxy_password,
+                   self.issue_user,
+                   self.issue_password
                )
 
 

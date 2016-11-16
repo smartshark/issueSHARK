@@ -6,7 +6,7 @@ import sys
 import argparse
 
 from issueshark.backends.basebackend import BaseBackend
-from issueshark.config import Config
+from issueshark.config import Config, ConfigValidationException
 from issueshark.issueshark import IssueSHARK
 
 
@@ -61,12 +61,16 @@ def start():
     parser.add_argument('-PP', '--proxy-port', help='Port of the proxy to use.', default=None)
     parser.add_argument('-Pp', '--proxy-password', help='Password to use the proxy (HTTP Basic Auth)', default=None)
     parser.add_argument('-PU', '--proxy-user', help='Username to use the proxy (HTTP Basic Auth)', default=None)
-    parser.add_argument('-t', '--token', help='Token for accessing.')
+    parser.add_argument('-iU', '--issue-user', help='Username to use the issue tracking system', default=None)
+    parser.add_argument('-iP', '--issue-password', help='Password to use the issue tracking system', default=None)
+    parser.add_argument('--debug', help='Sets the debug level.', default='DEBUG',
+                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'])
+    parser.add_argument('-t', '--token', help='Token for accessing.', default=None)
 
     try:
         args = parser.parse_args()
         cfg = Config(args)
-    except Exception as e:
+    except ConfigValidationException as e:
         logger.error(e)
         sys.exit(1)
 

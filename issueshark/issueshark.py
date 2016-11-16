@@ -14,6 +14,7 @@ class IssueSHARK(object):
         pass
 
     def start(self, cfg):
+        logger.setLevel(cfg.get_debug_level())
         start_time = timeit.default_timer()
 
         # Find correct backend
@@ -24,6 +25,7 @@ class IssueSHARK(object):
         connect(cfg.database, username=cfg.user, password=cfg.password, host=cfg.host, port=cfg.port,
                 authentication_source=cfg.authentication_db)
 
+        # Get the project for which issue data is collected
         try:
             project = Project.objects(url=cfg.project_url).get()
             project.issue_urls.append(cfg.tracking_url)
@@ -32,6 +34,7 @@ class IssueSHARK(object):
             logger.error('Project not found. Use vcsSHARK beforehand!')
             sys.exit(1)
 
+        # Process the issues for the corresponding project_id
         backend.process(project_id)
 
         elapsed = timeit.default_timer() - start_time
