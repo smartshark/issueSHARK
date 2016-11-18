@@ -1,32 +1,38 @@
 import dateutil
 import sys
+
+import time
 from mongoengine import DoesNotExist
 
 from issueshark.backends.basebackend import BaseBackend
 from urllib.parse import urlparse, quote_plus
-from jira import JIRA
+from jira import JIRA, JIRAError
 
 import logging
 
-from issueshark.storage.models import Event, People, Issue, IssueComment
+from issueshark.helpers.mongomodels import *
+
 
 logger = logging.getLogger('backend')
 
+
 class JiraException(Exception):
     pass
+
 
 class JiraBackend(BaseBackend):
     @property
     def identifier(self):
         return 'jira'
 
-    def __init__(self, cfg):
-        super().__init__(cfg)
+    def __init__(self, cfg, project_id):
+        super().__init__(cfg, project_id)
 
         logger.setLevel(self.debug_level)
         self.people = {}
+        self.jira_client = None
 
-    def process(self, project_id):
+    def process(self):
         logger.info("Starting the collection process...")
         if self.config.use_token():
             raise JiraException('Jira does not support tokens! Use issue_user and issue_password instead')
@@ -47,23 +53,25 @@ class JiraBackend(BaseBackend):
             options['server'] = options['server']+'/'+parsed_url.path.split('/')[1]
 
         # Connect to jira
-        jira = JIRA(options, basic_auth=(self.config.issue_user, self.config.issue_password),
+        self.jira_client = JIRA(options, basic_auth=(self.config.issue_user, self.config.issue_password),
                     proxies=self.config.get_proxy_dictionary())
 
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(project_id=project_id).order_by('-updated_at').only('updated_at').first()
+        last_issue = Issue.objects(project_id=self.project_id).order_by('-updated_at').only('updated_at').first()
         if last_issue is not None:
             starting_date = last_issue.updated_at
-            query = "project=%s and updatedDate > '%s' ORDER BY createdDate ASC" % (
+            query = "project=%s and updatedDate > '%s' ORDER BY updatedDate ASC" % (
                 project_name,
                 starting_date.strftime('%Y/%m/%d %H:%M')
             )
         else:
-            query = "project=%s ORDER BY createdDate ASC" % project_name
+            query = "project=%s ORDER BY updatedDate ASC" % project_name
 
         # We search our intital set of issues
-        issues = jira.search_issues(query, startAt=0, maxResults=50)
-        logger.debug('Found %d issues via url %s' % (len(issues), jira._get_url('search?jql=%s' % quote_plus(query))))
+        issues = self.jira_client.search_issues(query, startAt=0, maxResults=50, fields='summary')
+        logger.debug('Found %d issues via url %s' % (len(issues),
+                                                     self.jira_client._get_url('search?jql=%s&startAt=0&maxResults=50' %
+                                                                                quote_plus(query))))
 
         # If no new bugs found, return
         if len(issues) == 0:
@@ -75,32 +83,46 @@ class JiraBackend(BaseBackend):
         while len(issues) > 0:
             logger.info("Processing %d issues..." % len(issues))
             for issue in issues:
-                self._process_issue(jira, issue.key, project_id)
+                self._process_issue(issue.key)
 
             # Go through the next issues
-            issues = jira.search_issues(query, startAt=processed_results, maxResults=processed_results+50)
+            issues = self.jira_client.search_issues(query, startAt=processed_results, maxResults=50, fields='summary')
+            logger.debug('Found %d issues via url %s' %
+                         (len(issues), self.jira_client._get_url('search?jql=%s&startAt=%d&maxResults=50' %
+                                                                (quote_plus(query), processed_results))))
             processed_results += 50
 
-    def _transform_jira_issue(self, jira_issue, project_id, jira_client):
+    def _transform_jira_issue(self, jira_issue):
         updated_at = dateutil.parser.parse(jira_issue.fields.updated)
         created_at = dateutil.parser.parse(jira_issue.fields.created)
         try:
             # We can not return here, as the issue might be updated. This means, that the title could be updated
             # as well as comments and new events
-            new_issue = Issue.objects(project_id=project_id, system_id=jira_issue.key).get()
+            new_issue = Issue.objects(project_id=self.project_id, system_id=jira_issue.key).get()
         except DoesNotExist:
             new_issue = Issue(
-                project_id=project_id,
+                project_id=self.project_id,
                 system_id=jira_issue.key,
-                title=jira_issue.fields.summary,
-                desc=jira_issue.fields.description,
-                created_at=created_at,
-                updated_at=updated_at,
-                issue_type=jira_issue.fields.issuetype.name,
             )
 
-        new_issue.priority=jira_issue.fields.priority.name
-        new_issue.status = jira_issue.fields.status
+        # if the issue is a sub type we need to set the parent
+        if hasattr(jira_issue.fields, 'parent'):
+            issue_id = self._get_issue_id_by_system_id(jira_issue.fields.parent.key)
+            new_issue.parent = issue_id
+
+        new_issue.title = jira_issue.fields.summary
+        new_issue.desc = jira_issue.fields.description
+        new_issue.created_at = created_at
+        new_issue.updated_at = updated_at
+        new_issue.issue_type = jira_issue.fields.issuetype.name
+        new_issue.creator_id = self._get_people(jira_issue.fields.creator.name,
+                                             jira_issue.fields.creator.emailAddress,
+                                             jira_issue.fields.creator.displayName)
+        new_issue.reporter_id = self._get_people(jira_issue.fields.reporter.name,
+                                              jira_issue.fields.reporter.emailAddress,
+                                              jira_issue.fields.reporter.displayName)
+        new_issue.priority = jira_issue.fields.priority.name
+        new_issue.status = jira_issue.fields.status.name
         new_issue.affects_versions = [version.name for version in jira_issue.fields.versions]
         new_issue.components = [component.name for component in jira_issue.fields.components]
         new_issue.labels = jira_issue.fields.labels
@@ -114,7 +136,7 @@ class JiraBackend(BaseBackend):
         new_issue.fix_versions = [version.name for version in jira_issue.fields.fixVersions]
 
         if jira_issue.fields.assignee is not None:
-            new_issue.assignee = self._get_people(jira_client, jira_issue.fields.assignee.name,
+            new_issue.assignee = self._get_people(jira_issue.fields.assignee.name,
                                                   name=jira_issue.fields.assignee.displayName,
                                                   email=jira_issue.fields.assignee.emailAddress)
 
@@ -122,43 +144,72 @@ class JiraBackend(BaseBackend):
             links = []
             for issue_link in jira_issue.fields.issuelinks:
                 if hasattr(issue_link, 'outwardIssue'):
-                    try:
-                        issue_id = Issue.objects(project_id=project_id, system_id=issue_link.outwardIssue.key
-                                                 ).only('id').get().id
-                    except DoesNotExist:
-                        issue_id = Issue(project_id=project_id, system_id=issue_link.outwardIssue.key).save().id
+                    issue_id = self._get_issue_id_by_system_id(issue_link.outwardIssue.key)
                 else:
-                    try:
-                        issue_id = Issue.objects(project_id=project_id, system_id=issue_link.inwardIssue.key
-                                                 ).only('id').get().id
-                    except DoesNotExist:
-                        issue_id = Issue(project_id=project_id, system_id=issue_link.inwardIssue.key).save().id
+                    issue_id = self._get_issue_id_by_system_id(issue_link.inwardIssue.key)
 
                 links.append({'issue_id': issue_id, 'type': issue_link.type.name, 'effect': issue_link.type.outward})
             new_issue.issue_links = links
 
         return new_issue
 
-    def _process_issue(self, jira_client, issue_key, project_id):
-        issue = jira_client.issue(issue_key, expand='changelog')
+    def _process_issue(self, issue_key):
+        """
+        There are the following steps executed:
+        1) Transformation of the jira issue into a mongo db issue (can directly be saved)
+        2) Go through the whole history of the jira issue, create events and set back the values
+        3) This way, we get the ORIGINAL issue that was posted in jira, which is then saved in the issue collection
+        --> Some things can not be turned back, e.g. issue links, as there is information missing in the changelog
+        4) Comments of the issue are processed (and stored)
+
+        :param jira_client: connection to the jira instance
+        :param issue_key: key of the issue (e.g. ZOOKEEPER-2124)
+        :return:
+        """
+        issue_not_retrieved = True
+        timeout_start = time.time()
+        timeout = 300  # 5 minutes
+
+        # Retrieve the issue via the client and retry as long as the timeout is not running out
+        while issue_not_retrieved and time.time() < timeout_start + timeout:
+            try:
+                issue = self.jira_client.issue(issue_key, expand='changelog')
+                issue_not_retrieved = False
+            except JIRAError:
+                time.sleep(30)
+                pass
+
+        if time.time() >= timeout_start + timeout:
+            logger.error('Could not get issue: %s' % issue)
+            return
+
+        logger.debug('Processing issue %s via url %s' % (issue,
+                                                         self.jira_client._get_url('issue/%s?expand=changelog' % issue)))
+        logger.debug('Got fields: %s' % vars(issue.fields))
 
         # Transform jira issue to mongo issue
-        new_issue = self._transform_jira_issue(issue, project_id, jira_client)
+        new_issue = self._transform_jira_issue(issue)
+        logger.debug('Transformed issue: %s' % new_issue)
 
         # Go through all events and set back issue items till we get the original one
         events = []
         for history in reversed(issue.changelog.histories):
             i = 0
             for item in reversed(history.items):
-                # Create event list, but check before if event already exists
-                event = self._process_event(history, item, i, jira_client, project_id)
-                if event is not None:
+                logger.debug('Processing changelog entry: %s' % vars(item))
+                # Create event list
+                (event, newly_created) = self._process_event(history, item, i)
+                logger.debug('Newly created?: %s, Resulting event: %s' % (newly_created, event))
+
+                # Append to list if event is not stored in db
+                if newly_created:
                     events.append(event)
 
                 # Set back issue
-                self._set_back_issue_field(new_issue, item, jira_client, project_id)
+                self._set_back_issue(new_issue, event)
 
                 i += 1
+        logger.debug('Original issue to store: %s' % new_issue)
 
         # Store issue
         if new_issue.id is None:
@@ -173,11 +224,15 @@ class JiraBackend(BaseBackend):
             Event.objects.insert(events, load_bulk=False)
 
         # Store comments of issue
-        self._process_comments(issue, issue_id, jira_client)
+        self._process_comments(issue, issue_id)
 
-    def _process_comments(self, issue, issue_id, jira_client):
+    def _process_comments(self, issue, issue_id):
+
+        # Go through all comments of the issue
         comments_to_insert = []
+        logger.info('Processing %d comments...' % len(issue.fields.comment.comments))
         for comment in issue.fields.comment.comments:
+            logger.debug('Processing comment: %s' % comment)
             created_at = dateutil.parser.parse(comment.created)
             try:
                 IssueComment.objects(system_id=comment.id).get()
@@ -187,179 +242,221 @@ class JiraBackend(BaseBackend):
                     system_id=comment.id,
                     issue_id=issue_id,
                     created_at=created_at,
-                    author_id=self._get_people(jira_client, comment.author.name, comment.author.emailAddress,
+                    author_id=self._get_people(comment.author.name, comment.author.emailAddress,
                                                comment.author.displayName),
                     comment=comment.body,
                 )
+                logger.debug('Resulting comment: %s' % mongo_comment)
                 comments_to_insert.append(mongo_comment)
 
         # If comments need to be inserted -> bulk insert
         if comments_to_insert:
             IssueComment.objects.insert(comments_to_insert, load_bulk=False)
 
-    def _process_event(self, history, item, i, client, project_id):
-        created_at = dateutil.parser.parse(history.created)
+    def _get_issue_id_by_system_id(self, system_id, refresh_key=False):
+        if refresh_key:
+            system_id = self._get_newest_key_for_issue(system_id)
 
-        author_id = self._get_people(client, history.author.name, name=history.author.displayName,
-                                     email=history.author.emailAddress)
+        try:
+            issue_id = Issue.objects(project_id=self.project_id, system_id=system_id).only('id').get().id
+        except DoesNotExist:
+            issue_id = Issue(project_id=self.project_id, system_id=system_id).save().id
+
+        return issue_id
+
+    def _process_event(self, history, item, i):
+        created_at = dateutil.parser.parse(history.created)
 
         # Maybe this should be  changed when it becomes important
         system_id = str(history.id)+"%%"+str(i)
 
+        # Try to get the event. If it is already existent, then return directly
         try:
-            Event.objects(system_id=system_id).get()
-            return None
+            event = Event.objects(system_id=system_id).get()
+            return event, False
         except DoesNotExist:
             event = Event(
                 system_id=system_id,
                 created_at=created_at,
                 status=self._replace_item_field_for_storage(item.field).lower(),
-                author_id=author_id,
             )
 
+        # It can happen that an event does not have an author (e.g., ZOOKEEPER-2218)
+        if hasattr(history, 'author'):
+            event.author_id = self._get_people(history.author.name, name=history.author.displayName,
+                                         email=history.author.emailAddress)
+
+        # Some fields need to be taken care of (e.g., getting the objectid of the assignee)
         if item.field == 'assignee':
             if getattr(item, 'from') is not None:
-                event.old_value = self._get_people(client, getattr(item, 'from'))
-
+                event.old_value = self._get_people(getattr(item, 'from'))
             if item.to is not None:
-                event.new_value = self._get_people(client, item.to)
+                event.new_value = self._get_people(item.to)
+        elif item.field == 'Parent':
+            if getattr(item, 'from') is not None:
+                event.old_value = self._get_issue_id_by_system_id(getattr(item, 'from'), refresh_key=True)
+            if item.to is not None:
+                event.new_value = self._get_issue_id_by_system_id(item.to, refresh_key=True)
         elif item.field == 'Link':
             if getattr(item, 'from') is not None:
-                try:
-                    issue_id_old = Issue.objects(project_id=project_id, system_id=getattr(item, 'from'))\
-                        .only('id').get().id
-                except DoesNotExist:
-                    issue_id_old = Issue(project_id=project_id, system_id=getattr(item, 'from')).save().id
-                event.old_value = issue_id_old
+               event.old_value = self._get_issue_id_by_system_id(getattr(item, 'from'), refresh_key=True)
             if item.to is not None:
-                try:
-                    issue_id_new = Issue.objects(project_id=project_id, system_id=item.to).only('id').get().id
-                except DoesNotExist:
-                    issue_id_new = Issue(project_id=project_id, system_id=item.to).save().id
-                event.new_value = issue_id_new
+                event.new_value = self._get_issue_id_by_system_id(item.to, refresh_key=True)
         else:
             event.old_value = item.fromString
             event.new_value = item.toString
 
-        return event
+        return event, True
 
     def _replace_item_field_for_storage(self, status):
-        if status == 'assignee':
-            return 'assigned'
-        return status
+        stati_replacements = {
+            'assignee': 'assigned',
+            'summary': 'renamed'
+        }
 
-    def _set_back_issue_field(self, issue, item, jira_client, project_id):
-        if item.field == 'description':
-            issue.desc = item.fromString
-        elif item.field == 'priority':
-            issue.priority = item.fromString
-        elif item.field == 'status':
-            issue.status = item.fromString
-        elif item.field == 'resolution':
-            issue.resolution = item.fromString
-        elif item.field == 'summary':
-            issue.title = item.fromString
-        elif item.field == 'issuetype':
-            issue.issue_type = item.fromString
-        elif item.field == 'environment':
-            issue.environment = item.fromString
-        elif item.field == 'timeoriginalestimate':
-            issue.original_time_estimate = item.fromString
-        elif item.field == 'assignee':
-            if getattr(item, 'from') is not None:
-                issue.assignee = self._get_people(jira_client, getattr(item, 'from'))
+        # Replace the status message so that it is the same as with github
+        if status in stati_replacements:
+            return stati_replacements[status]
+        else:
+            return status
+
+    def _set_back_issue(self, issue, event):
+        if event.status == 'description':
+            issue.desc = event.old_value
+        elif event.status == 'priority':
+            issue.priority = event.old_value
+        elif event.status == 'status':
+            issue.status = event.old_value
+        elif event.status == 'resolution':
+            issue.resolution = event.old_value
+        elif event.status == 'renamed':
+            issue.title = event.old_value
+        elif event.status == 'issuetype':
+            issue.issue_type = event.old_value
+        elif event.status == 'environment':
+            issue.environment = event.old_value
+        elif event.status == 'timeoriginalestimate':
+            issue.original_time_estimate = event.old_value
+        elif event.status == 'assigned':
+            if event.old_value is not None:
+                issue.assignee = event.old_value
             else:
                 issue.assignee = None
-        elif item.field == 'Version':
+        elif event.status == 'parent':
+            if event.old_value is not None:
+                issue.parent = event.old_value
+            else:
+                issue.parent = None
+        elif event.status == 'version':
             # If a version was removed, we need to add it to get the older state
-            if not item.toString and item.fromString:
-                issue.affects_versions.append(item.fromString)
+            if not event.new_value and event.old_value:
+                issue.affects_versions.append(event.old_value)
 
-            if not item.fromString and item.toString:
-                issue.affects_versions.remove(item.toString)
+            if not event.old_value and event.new_value:
+                issue.affects_versions.remove(event.new_value)
 
-            if item.fromString and item.toString:
-                issue.affects_versions.add(item.fromString)
-                issue.affects_versions.remove(item.toString)
-
-        elif item.field == 'Component':
+            if event.old_value and event.new_value:
+                issue.affects_versions.add(event.old_value)
+                issue.affects_versions.remove(event.new_value)
+        elif event.status == 'component':
             # If a component was removed, we need to add it to get the older state
-            if not item.toString and item.fromString:
-                issue.components.append(item.fromString)
+            if not event.new_value and event.old_value:
+                issue.components.append(event.old_value)
 
-            if not item.fromString and item.toString:
-                issue.components.remove(item.toString)
+            if not event.old_value and event.new_value:
+                issue.components.remove(event.new_value)
 
-            if item.fromString and item.toString:
-                issue.components.add(item.fromString)
-                issue.components.remove(item.toString)
+            if event.old_value and event.new_value:
+                issue.components.add(event.old_value)
+                issue.components.remove(event.new_value)
 
-        elif item.field == 'labels':
+        elif event.status == 'labels':
             # If a label was removed, we need to add it to get the older state
-            if not item.toString and item.fromString:
-                issue.labels.append(item.fromString)
+            if not event.new_value and event.old_value:
+                for old_label in event.old_value.split(" "):
+                    issue.labels.append(old_label)
 
-            if not item.fromString and item.toString:
-                issue.labels.remove(item.toString)
+            if not event.old_value and event.new_value:
+                for new_label in event.new_value.split(" "):
+                    issue.labels.remove(new_label)
 
-            if item.fromString and item.toString:
-                issue.labels.append(item.fromString)
-                issue.labels.remove(item.toString)
-        elif item.field == 'Fix Version':
+            if event.old_value and event.new_value:
+                issue.labels.append(event.old_value)
+
+                # It can happen, that one label gets renamed into two separate labels (e.g. ZOOKEEPER-2512)
+                for new_label in event.new_value.split(" "):
+                    issue.labels.remove(new_label)
+        elif event.status == 'fix version':
             # If a fixed version was removed, we need to add it to get the older state
-            if not item.toString and item.fromString:
-                issue.fix_versions.append(item.fromString)
+            if not event.new_value and event.old_value:
+                issue.fix_versions.append(event.old_value)
 
-            if not item.fromString and item.toString:
-                issue.fix_versions.remove(item.toString)
+            if not event.old_value and event.new_value:
+                issue.fix_versions.remove(event.new_value)
 
-            if item.fromString and item.toString:
-                issue.fix_versions.append(item.fromString)
-                issue.fix_versions.remove(item.toString)
-
-        elif item.field == 'Link':
+            if event.old_value and event.new_value:
+                issue.fix_versions.append(event.old_value)
+                issue.fix_versions.remove(event.new_value)
+        elif event.status == 'link':
             # If a link was removed, we need to add it to get the older state
-            if item.to is None:
+            if event.new_value is None:
                 # Here information is lost! We can not know the type and effect of this issuelink, as it is not in the
                 # data!
-                issue_id = Issue.objects(project_id=project_id, system_id=getattr(item, 'from')).only('id').get().id
                 issue.issue_links.append({
-                    'issue_id': issue_id, 'type': None, 'effect': None
+                    'issue_id': event.old_value, 'type': None, 'effect': None
                 })
             else:
                 index_of_found_entry = 0
-                issue_id = Issue.objects(project_id=project_id, system_id=item.to).only('id').get().id
                 for issue_link in issue.issue_links:
-                    if issue_link['issue_id'] == issue_id:
+                    if issue_link['issue_id'] == event.new_value:
                         break
                     index_of_found_entry += 1
 
                 del issue.issue_links[index_of_found_entry]
-        elif item.field == 'Attachment' or item.field == 'Release Note' or item.field == 'RemoteIssueLink' or \
-                        item.field == 'Comment' or item.field == 'Hadoop Flags' or item.field == 'timeestimate':
+        elif event.status == 'attachment' or event.status == 'release note' or event.status == 'remoteissuelink' or \
+             event.status == 'comment' or event.status == 'hadoop flags' or event.status == 'timeestimate' or \
+             event.status == 'tags' or event.status == 'duedate' or event.status == 'timespent' or \
+             event.status == 'worklogid':
             # Ignore these fields
             return
         else:
-            logger.error('Item field "%s" not handled' % item.field)
+            logger.error('Item field "%s" not handled' % event.status)
             sys.exit(1)
 
-    def _get_people(self, jira_client, username, email=None, name=None):
-        # Check if user was accessed before. This reduces the amount of API requests to github
+    def _get_newest_key_for_issue(self, old_key):
+        # We query the saved issue and access it via our jira connection. The jira connection will give us back
+        # the NEW value (e.g., if we access via the key ZOOKEEPER-659, we will get back BOOKKEEPER-691 which is the
+        # new value
+        try:
+            issue = self.jira_client.issue(old_key, fields='summary')
+            if old_key != issue.key:
+                logger.debug('Got new issue: %s' % issue)
+            return issue.key
+        except JIRAError:
+            # Can happen as issue may be deleted
+            return old_key
+
+
+    def _get_people(self, username, email=None, name=None):
+        # Check if user was accessed before. This reduces the amount of API requests
         if username in self.people:
             return self.people[username]
 
+        # If email and name are not set, make a request to get the user
         if email is None and name is None:
-            user = self._get_user(jira_client, username)
+            user = self._get_user(username)
             email = user.emailAddress
             name = user.displayName
 
+        # Replace the email address "anonymization"
         email = email.replace(' at ', '@').replace(' dot ', '.')
         people_id = People.objects(name=name, email=email).upsert_one(name=name, email=email, username=username).id
         self.people[username] = people_id
         return people_id
 
-    def _get_user(self, jira_client, username):
+    def _get_user(self, username):
+        # Get user via the jira client
         if username is None:
             return None
 
-        return jira_client.find('user?username={0}', username)
+        return self.jira_client.find('user?username={0}', username)

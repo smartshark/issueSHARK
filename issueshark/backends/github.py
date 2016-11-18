@@ -11,7 +11,7 @@ import logging
 import requests
 import dateutil.parser
 
-from issueshark.storage.models import Issue, People, Project, IssueComment, Commit, Event
+from issueshark.helpers.mongomodels import *
 
 logger = logging.getLogger('backend')
 STATE_ALL = 'all'
@@ -28,17 +28,17 @@ class GithubBackend(BaseBackend):
     def identifier(self):
         return 'github'
 
-    def __init__(self, cfg):
-        super().__init__(cfg)
+    def __init__(self, cfg, project_id):
+        super().__init__(cfg, project_id)
 
         logger.setLevel(self.debug_level)
         self.people = {}
 
-    def process(self, project_id):
+    def process(self):
         logger.info("Starting the collection process...")
 
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(project_id=project_id).order_by('-updated_at').only('updated_at').first()
+        last_issue = Issue.objects(project_id=self.project_id).order_by('-updated_at').only('updated_at').first()
         starting_date = None
         if last_issue is not None:
             starting_date = last_issue.updated_at
@@ -55,11 +55,11 @@ class GithubBackend(BaseBackend):
         page_number = 1
         while len(issues) > 0:
             for issue in issues:
-                self.store_issue(issue, project_id)
+                self.store_issue(issue)
             page_number += 1
             issues = self.get_issues(pagecount=page_number, start_date=starting_date)
 
-    def store_issue(self, raw_issue, project_id):
+    def store_issue(self, raw_issue):
         logger.debug('Processing issue %s' % raw_issue)
         updated_at = dateutil.parser.parse(raw_issue['updated_at'])
         created_at = dateutil.parser.parse(raw_issue['created_at'])
@@ -67,10 +67,11 @@ class GithubBackend(BaseBackend):
         try:
             # We can not return here, as the issue might be updated. This means, that the title could be updated
             # as well as comments and new events
-            issue = Issue.objects(project_id=project_id, system_id=raw_issue['number']).get()
+            issue = Issue.objects(project_id=self.project_id, system_id=raw_issue['number']).get()
         except DoesNotExist:
-            issue = Issue(project_id=project_id, system_id=raw_issue['number'])
+            issue = Issue(project_id=self.project_id, system_id=raw_issue['number'])
 
+        issue.creator = self._get_people(raw_issue['user']['url'])
         issue.title = raw_issue['title']
         issue.desc = raw_issue['body']
         issue.updated_at = updated_at
@@ -82,9 +83,9 @@ class GithubBackend(BaseBackend):
         self._process_comments(str(issue.system_id), mongo_issue)
 
         # Process events
-        self._process_events(str(issue.system_id), mongo_issue, project_id)
+        self._process_events(str(issue.system_id), mongo_issue)
 
-    def _process_events(self, system_id, mongo_issue, project_id):
+    def _process_events(self, system_id, mongo_issue):
         # Get all events to the corresponding issue
         target_url = '%s/%s/events' % (self.config.tracking_url, system_id)
         events = self._send_request(target_url)
@@ -106,7 +107,7 @@ class GithubBackend(BaseBackend):
                 # It can happen that a commit from another repository references this issue. Therefore, we can not
                 # find the commit, as it is not part of THIS repository
                 try:
-                    event.commit_id = Commit.objects(projectId=project_id, revisionHash=raw_event['commit_id'])\
+                    event.new_value = Commit.objects(projectId=self.project_id, revisionHash=raw_event['commit_id'])\
                         .only('id').get().id
                 except DoesNotExist:
                     pass

@@ -10,15 +10,16 @@ class BaseBackend(metaclass=abc.ABCMeta):
     def identifier(self):
         return
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, project_id):
         self.config = cfg
+        self.project_id = project_id
         self.debug_level = logging.DEBUG
 
         if self.config is not None:
             self.debug_level = self.config.get_debug_level()
 
     @abc.abstractmethod
-    def process(self, project_id):
+    def process(self):
         pass
 
     @staticmethod
@@ -29,11 +30,11 @@ class BaseBackend(metaclass=abc.ABCMeta):
             __import__(backend)
 
     @staticmethod
-    def find_fitting_backend(cfg):
+    def find_fitting_backend(cfg, project_id):
         BaseBackend._import_backends()
 
         for sc in BaseBackend.__subclasses__():
-            backend = sc(cfg)
+            backend = sc(cfg, project_id)
             if backend.identifier == cfg.identifier:
                 return backend
 
@@ -45,6 +46,6 @@ class BaseBackend(metaclass=abc.ABCMeta):
 
         choices = []
         for sc in BaseBackend.__subclasses__():
-            backend = sc(None)
+            backend = sc(None, None)
             choices.append(backend.identifier)
         return choices

@@ -6,8 +6,8 @@ class BugzillaBackend(BaseBackend):
     def identifier(self):
         return 'bugzilla'
 
-    def __init__(self, tracking_url):
-        super().__init__(tracking_url)
+    def __init__(self, cfg, project_id):
+        super().__init__(cfg, project_id)
 
-    def process(self, project_id):
+    def process(self):
         pass
