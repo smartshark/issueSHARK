@@ -1,3 +1,0 @@
-[submodule "issueshark/helpers"]
-	path = issueshark/helpers
-	url = git@github.com:smartshark/helpers.git
