@@ -2,9 +2,11 @@ import logging
 import timeit
 
 import sys
+
+import datetime
 from mongoengine import connect, DoesNotExist
 from issueshark.backends.basebackend import BaseBackend
-from issueshark.helpers.mongomodels import Project
+from issueshark.mongomodels import Project, IssueSystem
 
 logger = logging.getLogger("main")
 
@@ -23,18 +25,21 @@ class IssueSHARK(object):
 
         # Get the project for which issue data is collected
         try:
-            project = Project.objects(url=cfg.project_url).get()
-            if cfg.tracking_url not in project.issue_urls:
-                project.issue_urls.append(cfg.tracking_url)
-                project_id = project.save().id
-            else:
-                project_id = project.id
+            project_id = Project.objects(name=cfg.project_name).get().id
         except DoesNotExist:
-            logger.error('Project not found. Use vcsSHARK beforehand!')
+            logger.error('Project %s not found!' % cfg.project_name)
             sys.exit(1)
 
+        # Create issue system if not already there
+        try:
+            issue_system = IssueSystem.objects(url=cfg.tracking_url).get()
+        except DoesNotExist:
+            issue_system = IssueSystem(project_id=project_id, url=cfg.tracking_url).save()
+        issue_system.last_updated = datetime.datetime.now()
+        issue_system.save()
+
         # Find correct backend
-        backend = BaseBackend.find_fitting_backend(cfg, project_id)
+        backend = BaseBackend.find_fitting_backend(cfg, issue_system.id, project_id)
         logger.debug("Using backend: %s" % backend.identifier)
 
         # Process the issues for the corresponding project_id

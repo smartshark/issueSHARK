@@ -40,7 +40,7 @@ def start():
     try:
         backend_choices = BaseBackend.get_all_possible_backend_options()
     except Exception as e:
-        logger.error("Failed to instantiate backend. Message: %s" % (e))
+        logger.exception("Failed to instantiate backend.")
         sys.exit(1)
 
     logger.debug("Found the following backends: %s" % ', '.join(backend_choices))
@@ -53,7 +53,7 @@ def start():
                         default='localhost')
     parser.add_argument('-p', '--db-port', help='Port, where the database server is listening', default=27017, type=int)
     parser.add_argument('-a', '--db-authentication', help='Name of the authentication database')
-    parser.add_argument('-u', '--url', help='URL of the VCS of the project.', required=True)
+    parser.add_argument('-n', '--project-name', help='Name of the project to analyze.', required=True)
     parser.add_argument('-i', '--issueurl', help='URL to the bugtracking system.', required=True)
     parser.add_argument('-b', '--backend', help='Backend to use for the issue parsing', default='github',
                         choices=backend_choices)

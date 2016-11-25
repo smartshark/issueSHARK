@@ -10,8 +10,9 @@ class BaseBackend(metaclass=abc.ABCMeta):
     def identifier(self):
         return
 
-    def __init__(self, cfg, project_id):
+    def __init__(self, cfg, issue_system_id, project_id):
         self.config = cfg
+        self.issue_system_id = issue_system_id
         self.project_id = project_id
         self.debug_level = logging.DEBUG
 
@@ -30,11 +31,11 @@ class BaseBackend(metaclass=abc.ABCMeta):
             __import__(backend)
 
     @staticmethod
-    def find_fitting_backend(cfg, project_id):
+    def find_fitting_backend(cfg, issue_system_id, project_id):
         BaseBackend._import_backends()
 
         for sc in BaseBackend.__subclasses__():
-            backend = sc(cfg, project_id)
+            backend = sc(cfg, issue_system_id, project_id)
             if backend.identifier == cfg.identifier:
                 return backend
 
@@ -46,6 +47,6 @@ class BaseBackend(metaclass=abc.ABCMeta):
 
         choices = []
         for sc in BaseBackend.__subclasses__():
-            backend = sc(None, None)
+            backend = sc(None, None, None)
             choices.append(backend.identifier)
         return choices

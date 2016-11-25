@@ -11,7 +11,7 @@ import logging
 import requests
 import dateutil.parser
 
-from issueshark.helpers.mongomodels import *
+from issueshark.mongomodels import *
 
 logger = logging.getLogger('backend')
 STATE_ALL = 'all'
@@ -28,8 +28,8 @@ class GithubBackend(BaseBackend):
     def identifier(self):
         return 'github'
 
-    def __init__(self, cfg, project_id):
-        super().__init__(cfg, project_id)
+    def __init__(self, cfg, issue_system_id, project_id):
+        super().__init__(cfg, issue_system_id, project_id)
 
         logger.setLevel(self.debug_level)
         self.people = {}
@@ -38,7 +38,7 @@ class GithubBackend(BaseBackend):
         logger.info("Starting the collection process...")
 
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(project_id=self.project_id).order_by('-updated_at').only('updated_at').first()
+        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at').only('updated_at').first()
         starting_date = None
         if last_issue is not None:
             starting_date = last_issue.updated_at
@@ -67,9 +67,9 @@ class GithubBackend(BaseBackend):
         try:
             # We can not return here, as the issue might be updated. This means, that the title could be updated
             # as well as comments and new events
-            issue = Issue.objects(project_id=self.project_id, system_id=raw_issue['number']).get()
+            issue = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(raw_issue['number'])).get()
         except DoesNotExist:
-            issue = Issue(project_id=self.project_id, system_id=raw_issue['number'])
+            issue = Issue(issue_system_id=self.issue_system_id, external_id=str(raw_issue['number']))
 
         issue.creator = self._get_people(raw_issue['user']['url'])
         issue.title = raw_issue['title']
@@ -80,10 +80,10 @@ class GithubBackend(BaseBackend):
         mongo_issue = issue.save()
 
         # Process comments
-        self._process_comments(str(issue.system_id), mongo_issue)
+        self._process_comments(str(issue.external_id), mongo_issue)
 
         # Process events
-        self._process_events(str(issue.system_id), mongo_issue)
+        self._process_events(str(issue.external_id), mongo_issue)
 
     def _process_events(self, system_id, mongo_issue):
         # Get all events to the corresponding issue
@@ -97,18 +97,20 @@ class GithubBackend(BaseBackend):
 
             # If the event is already saved, we can just continue, because nothing will change on the event
             try:
-                Event.objects(system_id=raw_event['id']).get()
+                Event.objects(external_id=raw_event['id'], issue_id=mongo_issue.id).get()
                 continue
             except DoesNotExist:
-                event = Event(system_id=raw_event['id'],
+                event = Event(external_id=raw_event['id'],
                               issue_id=mongo_issue.id, created_at=created_at, status=raw_event['event'])
 
             if raw_event['commit_id'] is not None:
                 # It can happen that a commit from another repository references this issue. Therefore, we can not
                 # find the commit, as it is not part of THIS repository
                 try:
-                    event.new_value = Commit.objects(projectId=self.project_id, revisionHash=raw_event['commit_id'])\
-                        .only('id').get().id
+                    vcs_system_ids = [system.id for system in
+                                      VCSSystem.objects(project_id=self.project_id).only('id').all()]
+                    event.new_value = Commit.objects(vcs_system_id__in=vcs_system_ids,
+                                                     revision_hash=raw_event['commit_id']).only('id').get().id
                 except DoesNotExist:
                     pass
 
@@ -172,11 +174,11 @@ class GithubBackend(BaseBackend):
         for raw_comment in comments:
             created_at = dateutil.parser.parse(raw_comment['created_at'])
             try:
-                IssueComment.objects(system_id=raw_comment['id']).get()
+                IssueComment.objects(external_id=raw_comment['id'], issue_id=mongo_issue.id).get()
                 continue
             except DoesNotExist:
                 comment = IssueComment(
-                    system_id=raw_comment['id'],
+                    external_id=raw_comment['id'],
                     issue_id=mongo_issue.id,
                     created_at=created_at,
                     author_id=self._get_people(raw_comment['user']['url']),

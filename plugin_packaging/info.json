@@ -125,6 +125,13 @@
             "position": 15,
             "type": "execute",
             "description": "password of the proxy"
+        },
+        {
+            "name": "debug",
+            "required": false,
+            "position": 16,
+            "type": "execute",
+            "description": "debug level (DEBUG, INFO, ERROR, WARNING)"
         }
     ]
 }

@@ -8,7 +8,7 @@ class Config(object):
         self.tracking_url = args.issueurl.rstrip('/')
         self.identifier = args.backend
         self.token = args.token
-        self.project_url = args.url.rstrip('/')
+        self.project_name = args.project_name
         self.host = args.db_hostname
         self.port = args.db_port
         self.user = args.db_user
@@ -19,7 +19,7 @@ class Config(object):
         self.issue_password = args.issue_password
         self.debug = args.debug
 
-        if args.proxy_host.startswith('http://'):
+        if args.proxy_host and args.proxy_host.startswith('http://'):
             self.proxy_host = args.proxy_host[7:]
         else:
             self.proxy_host = args.proxy_host
@@ -86,14 +86,14 @@ class Config(object):
         return True
 
     def __str__(self):
-        return "Config: identifier: %s, token: %s, tracking_url: %s, project_url: %s, host: %s, port: %s, user: %s, " \
+        return "Config: identifier: %s, token: %s, tracking_url: %s, project_name: %s, host: %s, port: %s, user: %s, " \
                "password: %s, database: %s, authentication_db: %s, proxy_host: %s, proxy_port: %s, proxy_username: %s" \
                "proxy_password: %s, issue_user: %s, issue_password: %s" % \
                (
                    self.identifier,
                    self.token,
                    self.tracking_url,
-                   self.project_url,
+                   self.project_name,
                    self.host,
                    self.port,
                    self.user,

@@ -10,7 +10,7 @@ from jira import JIRA, JIRAError
 
 import logging
 
-from issueshark.helpers.mongomodels import *
+from issueshark.mongomodels import *
 
 
 logger = logging.getLogger('backend')
@@ -25,8 +25,8 @@ class JiraBackend(BaseBackend):
     def identifier(self):
         return 'jira'
 
-    def __init__(self, cfg, project_id):
-        super().__init__(cfg, project_id)
+    def __init__(self, cfg, issue_system_id, project_id):
+        super().__init__(cfg, issue_system_id, project_id)
 
         logger.setLevel(self.debug_level)
         self.people = {}
@@ -57,15 +57,15 @@ class JiraBackend(BaseBackend):
                     proxies=self.config.get_proxy_dictionary())
 
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(project_id=self.project_id).order_by('-updated_at').only('updated_at').first()
+        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at').only('updated_at').first()
         if last_issue is not None:
             starting_date = last_issue.updated_at
-            query = "project=%s and updatedDate > '%s' ORDER BY updatedDate ASC" % (
+            query = "project=%s and updatedDate > '%s' ORDER BY createdDate ASC" % (
                 project_name,
                 starting_date.strftime('%Y/%m/%d %H:%M')
             )
         else:
-            query = "project=%s ORDER BY updatedDate ASC" % project_name
+            query = "project=%s ORDER BY createdDate ASC" % project_name
 
         # We search our intital set of issues
         issues = self.jira_client.search_issues(query, startAt=0, maxResults=50, fields='summary')
@@ -98,17 +98,17 @@ class JiraBackend(BaseBackend):
         try:
             # We can not return here, as the issue might be updated. This means, that the title could be updated
             # as well as comments and new events
-            new_issue = Issue.objects(project_id=self.project_id, system_id=jira_issue.key).get()
+            new_issue = Issue.objects(issue_system_id=self.issue_system_id, external_id=jira_issue.key).get()
         except DoesNotExist:
             new_issue = Issue(
-                project_id=self.project_id,
-                system_id=jira_issue.key,
+                issue_system_id=self.issue_system_id,
+                external_id=jira_issue.key,
             )
 
         # if the issue is a sub type we need to set the parent
         if hasattr(jira_issue.fields, 'parent'):
             issue_id = self._get_issue_id_by_system_id(jira_issue.fields.parent.key)
-            new_issue.parent = issue_id
+            new_issue.parent_issue_id = issue_id
 
         new_issue.title = jira_issue.fields.summary
         new_issue.desc = jira_issue.fields.description
@@ -125,7 +125,11 @@ class JiraBackend(BaseBackend):
         new_issue.status = jira_issue.fields.status.name
         new_issue.affects_versions = [version.name for version in jira_issue.fields.versions]
         new_issue.components = [component.name for component in jira_issue.fields.components]
-        new_issue.labels = jira_issue.fields.labels
+
+        splitted_labels = []
+        for label in jira_issue.fields.labels:
+            splitted_labels.extend(label.split(" "))
+        new_issue.labels = splitted_labels
 
         if jira_issue.fields.resolution is not None:
             new_issue.resolution = jira_issue.fields.resolution.name
@@ -136,9 +140,9 @@ class JiraBackend(BaseBackend):
         new_issue.fix_versions = [version.name for version in jira_issue.fields.fixVersions]
 
         if jira_issue.fields.assignee is not None:
-            new_issue.assignee = self._get_people(jira_issue.fields.assignee.name,
-                                                  name=jira_issue.fields.assignee.displayName,
-                                                  email=jira_issue.fields.assignee.emailAddress)
+            new_issue.assignee_id = self._get_people(jira_issue.fields.assignee.name,
+                                                     name=jira_issue.fields.assignee.displayName,
+                                                     email=jira_issue.fields.assignee.emailAddress)
 
         if jira_issue.fields.issuelinks:
             links = []
@@ -198,7 +202,7 @@ class JiraBackend(BaseBackend):
             for item in reversed(history.items):
                 logger.debug('Processing changelog entry: %s' % vars(item))
                 # Create event list
-                (event, newly_created) = self._process_event(history, item, i)
+                (event, newly_created) = self._process_event(history, item, i, new_issue)
                 logger.debug('Newly created?: %s, Resulting event: %s' % (newly_created, event))
 
                 # Append to list if event is not stored in db
@@ -235,11 +239,11 @@ class JiraBackend(BaseBackend):
             logger.debug('Processing comment: %s' % comment)
             created_at = dateutil.parser.parse(comment.created)
             try:
-                IssueComment.objects(system_id=comment.id).get()
+                IssueComment.objects(external_id=comment.id, issue_id=issue_id).get()
                 continue
             except DoesNotExist:
                 mongo_comment = IssueComment(
-                    system_id=comment.id,
+                    external_id=comment.id,
                     issue_id=issue_id,
                     created_at=created_at,
                     author_id=self._get_people(comment.author.name, comment.author.emailAddress,
@@ -258,25 +262,34 @@ class JiraBackend(BaseBackend):
             system_id = self._get_newest_key_for_issue(system_id)
 
         try:
-            issue_id = Issue.objects(project_id=self.project_id, system_id=system_id).only('id').get().id
+            issue_id = Issue.objects(issue_system_id=self.issue_system_id, external_id=system_id).only('id').get().id
         except DoesNotExist:
-            issue_id = Issue(project_id=self.project_id, system_id=system_id).save().id
+            issue_id = Issue(issue_system_id=self.issue_system_id, external_id=system_id).save().id
 
         return issue_id
 
-    def _process_event(self, history, item, i):
+    def _process_event(self, history, item, i, issue):
         created_at = dateutil.parser.parse(history.created)
 
         # Maybe this should be  changed when it becomes important
         system_id = str(history.id)+"%%"+str(i)
 
-        # Try to get the event. If it is already existent, then return directly
-        try:
-            event = Event.objects(system_id=system_id).get()
-            return event, False
-        except DoesNotExist:
+        # The event can only exist, if the issue is existent
+        if issue.id is not None:
+            # Try to get the event. If it is already existent, then return directly
+            try:
+                event = Event.objects(external_id=system_id, issue_id=issue.id).get()
+                return event, False
+            except DoesNotExist:
+                event = Event(
+                    external_id=system_id,
+                    issue_id=issue.id,
+                    created_at=created_at,
+                    status=self._replace_item_field_for_storage(item.field).lower(),
+                )
+        else:
             event = Event(
-                system_id=system_id,
+                external_id=system_id,
                 created_at=created_at,
                 status=self._replace_item_field_for_storage(item.field).lower(),
             )
@@ -284,7 +297,7 @@ class JiraBackend(BaseBackend):
         # It can happen that an event does not have an author (e.g., ZOOKEEPER-2218)
         if hasattr(history, 'author'):
             event.author_id = self._get_people(history.author.name, name=history.author.displayName,
-                                         email=history.author.emailAddress)
+                                               email=history.author.emailAddress)
 
         # Some fields need to be taken care of (e.g., getting the objectid of the assignee)
         if item.field == 'assignee':
@@ -299,7 +312,7 @@ class JiraBackend(BaseBackend):
                 event.new_value = self._get_issue_id_by_system_id(item.to, refresh_key=True)
         elif item.field == 'Link':
             if getattr(item, 'from') is not None:
-               event.old_value = self._get_issue_id_by_system_id(getattr(item, 'from'), refresh_key=True)
+                event.old_value = self._get_issue_id_by_system_id(getattr(item, 'from'), refresh_key=True)
             if item.to is not None:
                 event.new_value = self._get_issue_id_by_system_id(item.to, refresh_key=True)
         else:
@@ -339,14 +352,14 @@ class JiraBackend(BaseBackend):
             issue.original_time_estimate = event.old_value
         elif event.status == 'assigned':
             if event.old_value is not None:
-                issue.assignee = event.old_value
+                issue.assignee_id = event.old_value
             else:
-                issue.assignee = None
+                issue.assignee_id = None
         elif event.status == 'parent':
             if event.old_value is not None:
-                issue.parent = event.old_value
+                issue.parent_issue_id = event.old_value
             else:
-                issue.parent = None
+                issue.parent_issue_id = None
         elif event.status == 'version':
             # If a version was removed, we need to add it to get the older state
             if not event.new_value and event.old_value:
@@ -381,7 +394,8 @@ class JiraBackend(BaseBackend):
                     issue.labels.remove(new_label)
 
             if event.old_value and event.new_value:
-                issue.labels.append(event.old_value)
+                for old_label in event.old_value.split(" "):
+                    issue.labels.append(old_label)
 
                 # It can happen, that one label gets renamed into two separate labels (e.g. ZOOKEEPER-2512)
                 for new_label in event.new_value.split(" "):
@@ -411,17 +425,20 @@ class JiraBackend(BaseBackend):
                     if issue_link['issue_id'] == event.new_value:
                         break
                     index_of_found_entry += 1
-
-                del issue.issue_links[index_of_found_entry]
+                try:
+                    del issue.issue_links[index_of_found_entry]
+                except IndexError:
+                    logger.warning('Could not delete issue link of issue %s with event %s' % (issue, event))
         elif event.status == 'attachment' or event.status == 'release note' or event.status == 'remoteissuelink' or \
              event.status == 'comment' or event.status == 'hadoop flags' or event.status == 'timeestimate' or \
              event.status == 'tags' or event.status == 'duedate' or event.status == 'timespent' or \
-             event.status == 'worklogid':
+             event.status == 'worklogid' or event.status == 'flags' or event.status == 'reproduced in' or \
+             event.status == 'infra-members' or event.status == 'workflow' or event.status == 'key' or \
+             event.status == 'project':
             # Ignore these fields
             return
         else:
-            logger.error('Item field "%s" not handled' % event.status)
-            sys.exit(1)
+            logger.warning('Item field "%s" not handled' % event.status)
 
     def _get_newest_key_for_issue(self, old_key):
         # We query the saved issue and access it via our jira connection. The jira connection will give us back
@@ -435,7 +452,6 @@ class JiraBackend(BaseBackend):
         except JIRAError:
             # Can happen as issue may be deleted
             return old_key
-
 
     def _get_people(self, username, email=None, name=None):
         # Check if user was accessed before. This reduces the amount of API requests
