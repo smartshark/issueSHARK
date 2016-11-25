@@ -1,3 +1,5 @@
+import sys
+
 from issueshark.backends.basebackend import BaseBackend
 from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
 import urllib.parse
@@ -16,56 +18,46 @@ class BugzillaBackend(BaseBackend):
         super().__init__(cfg, issue_system_id, project_id)
 
         logger.setLevel(self.debug_level)
+        self.bugzilla_agent = None
 
     def process(self):
-        agent = BugzillaAgent(logger, self.config)
-
-        options = {
-            'status': 'CLOSED'
-        }
-        agent.get_bug_list(options)
-        agent.get_user(114)
-
-        #print(parsed_url.scheme+"://"+parsed_url.netloc+parsed_url.path.split('/'))
-
+        self.bugzilla_agent = BugzillaAgent(logger, self.config)
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at').only('updated_at').first()
+        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at')\
+            .only('updated_at').first()
         starting_date = None
         if last_issue is not None:
             starting_date = last_issue.updated_at
 
         # Get all issues
-        issues = agent.get_bug_list(start_date=starting_date)
+        issues = self.bugzilla_agent.get_bug_list(last_change_time=starting_date, limit=50)
 
         # If no new bugs found, return
         if len(issues) == 0:
             logger.info('No new issues found. Exiting...')
             sys.exit(0)
 
-        # Otherwise, go through all issues (and all pages)
-        page_number = 1
+        # Otherwise, go through all issues
+        processed_results = 50
         while len(issues) > 0:
+            logger.info("Processing %d issues..." % len(issues))
             for issue in issues:
-                self.store_issue(issue)
-            page_number += 1
-            issues = self.get_issues(pagecount=page_number, start_date=starting_date)
+                self._process_issue(issue)
 
-        '''
-        # We can use "None" for both instead to not authenticate
-        api_key = 'xxx'
+            # Go through the next issues
+            issues = self.bugzilla_agent.get_bug_list(last_change_time=starting_date, limit=50, offset=processed_results)
+            processed_results += 50
 
-        # Load our agent for BMO
-        bmo = BMOAgent(None)
+    def _process_issue(self, issue):
+        # Transform issue
+        # TODO
 
-        # Set whatever REST API options we want
+        # Go through history
+        # 1) Set back issue
+        # 2) Store events
 
+        # Store issue
 
-        # Get the bugs from the api
-        buglist = bmo.get_bug_list(options)
-
-        print("Found %s bugs" % (len(buglist)))
-
-        for bug in buglist:
-            print(bug)
-        '''
+        # Store comments
+        print(self.bugzilla_agent.get_comments(issue['id']))
 

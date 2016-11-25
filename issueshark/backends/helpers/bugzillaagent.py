@@ -28,20 +28,37 @@ class BugzillaAgent(object):
         if self.username is not None and self.password is None:
             raise BugzillaApiException('If a username is given, a password needs to be given too!')
 
-    def get_bug_list(self, last_change_time=None, offset=1):
+    def get_bug_list(self, last_change_time=None, offset=0, limit=50):
         options = {
             'product': self.project_name,
-            'offset': offset
+            'offset': offset,
+            'limit': limit,
+            'order': 'creation_time%20ASC'
         }
 
         if last_change_time is not None:
             options['last_change_time'] = last_change_time
 
-        return self._send_request('bug', options)
-        pass
+        return self._send_request('bug', options)['bugs']
 
     def get_user(self, id, options=None):
         return self._send_request('user/'+str(id), options)
+
+    def get_issue_history(self, external_issue_id, new_since=None):
+        options = {}
+
+        if new_since is not None:
+            options['new_since'] = new_since
+
+        return self._send_request(('bug/%s/history' % external_issue_id), new_since)
+
+    def get_comments(self, external_issue_id, new_since=None):
+        options = {}
+
+        if new_since is not None:
+            options['new_since'] = new_since
+
+        return self._send_request(('bug/%s/comment' % external_issue_id), new_since)
 
     def _send_request(self, endpoint, options):
         query = '%s' % endpoint
