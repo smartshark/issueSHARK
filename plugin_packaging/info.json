@@ -6,13 +6,7 @@
     "linux_libraries": [
     ],
     "description": "Plugin to collect data from issue tracking systems.",
-    "requires": [
-        {
-            "name": "vcsSHARK",
-            "operator": ">=",
-            "version": "0.10"
-        }
-    ],
+    "requires": [],
     "arguments": [
         {
             "name": "plugin_path",
@@ -30,14 +24,14 @@
         },
         {
             "name": "db_user",
-            "required": true,
+            "required": false,
             "position": 2,
             "type": "execute",
             "description": "database user for the mongodb"
         },
         {
             "name": "db_password",
-            "required": true,
+            "required": false,
             "position": 3,
             "type": "execute",
             "description": "password for the user of the mongodb"
@@ -65,17 +59,17 @@
         },
         {
             "name": "db_authentication",
-            "required": true,
+            "required": false,
             "position": 7,
             "type": "execute",
             "description": "databse against which users are authenticated"
         },
         {
-            "name": "url",
+            "name": "project_name",
             "required": true,
             "position": 8,
             "type": "execute",
-            "description": "url of the project, to which the issue tracking system belongs"
+            "description": "name of the project to which the issue system belongs"
         },
         {
             "name": "issueurl",
@@ -132,6 +126,20 @@
             "position": 16,
             "type": "execute",
             "description": "debug level (DEBUG, INFO, ERROR, WARNING)"
+        },
+        {
+            "name": "issue_user",
+            "required": false,
+            "position": 17,
+            "type": "execute",
+            "description": "username to use the issue system"
+        },
+        {
+            "name": "issue_password",
+            "required": false,
+            "position": 18,
+            "type": "execute",
+            "description": "password to use the issue system"
         }
     ]
 }
