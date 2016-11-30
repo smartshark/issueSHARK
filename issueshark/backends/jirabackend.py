@@ -1,3 +1,5 @@
+import copy
+
 import dateutil
 import sys
 
@@ -31,6 +33,28 @@ class JiraBackend(BaseBackend):
         logger.setLevel(self.debug_level)
         self.people = {}
         self.jira_client = None
+
+        self.at_mapping = {
+            'summary': 'title',
+            'description': 'desc',
+            'created': 'created_at',
+            'updated': 'updated_at',
+            'creator': 'creator_id',
+            'reporter': 'reporter_id',
+            'issuetype': 'issue_type',
+            'priority': 'priority',
+            'status': 'status',
+            'versions': 'affects_versions',
+            'components': 'components',
+            'labels': 'labels',
+            'resolution': 'resolution',
+            'fixVersions': 'fix_versions',
+            'assignee': 'assignee_id',
+            'issuelinks': 'issue_links',
+            'parent': 'parent_issue_id',
+            'timeoriginalestimate': 'original_time_estimate',
+            'environment': 'environment'
+        }
 
     def process(self):
         logger.info("Starting the collection process...")
@@ -93,6 +117,41 @@ class JiraBackend(BaseBackend):
             processed_results += 50
 
     def _transform_jira_issue(self, jira_issue):
+        try:
+            # We can not return here, as the issue might be updated. This means, that the title could be updated
+            # as well as comments and new events
+            mongo_issue = Issue.objects(issue_system_id=self.issue_system_id, external_id=jira_issue.key).get()
+        except DoesNotExist:
+            mongo_issue = Issue(
+                issue_system_id=self.issue_system_id,
+                external_id=jira_issue.key,
+            )
+
+        for at_name_jira, at_name_mongo in self.at_mapping.items():
+            # If the attribute is in the rest response set it
+            if hasattr(jira_issue.fields, at_name_jira):
+                if isinstance(getattr(mongo_issue, at_name_mongo), list):
+                    # Get the result and the current value and merge it together
+                    result = self._parse_jira_field(jira_issue.fields, at_name_jira)
+                    current_value = getattr(mongo_issue, at_name_mongo, list())
+                    if not isinstance(result, list):
+                        result = [result]
+
+                    # Extend
+                    current_value.extend(result)
+                    if len(current_value) > 0 and at_name_mongo == 'issue_links':
+                        current_value = list({v['issue_id']: v for v in current_value}.values())
+                    else:
+                        current_value = list(set(current_value))
+
+                    # Set the attribute
+                    setattr(mongo_issue, at_name_mongo, copy.deepcopy(current_value))
+                else:
+                    setattr(mongo_issue, at_name_mongo, self._parse_jira_field(jira_issue.fields, at_name_jira))
+
+        return mongo_issue.save()
+
+        '''
         updated_at = dateutil.parser.parse(jira_issue.fields.updated)
         created_at = dateutil.parser.parse(jira_issue.fields.created)
         try:
@@ -149,13 +208,85 @@ class JiraBackend(BaseBackend):
             for issue_link in jira_issue.fields.issuelinks:
                 if hasattr(issue_link, 'outwardIssue'):
                     issue_id = self._get_issue_id_by_system_id(issue_link.outwardIssue.key)
+                    effect = issue_link.type.outward
                 else:
                     issue_id = self._get_issue_id_by_system_id(issue_link.inwardIssue.key)
+                    effect = issue_link.type.inward
 
-                links.append({'issue_id': issue_id, 'type': issue_link.type.name, 'effect': issue_link.type.outward})
+                links.append({'issue_id': issue_id, 'type': issue_link.type.name, 'effect': effect})
             new_issue.issue_links = links
 
         return new_issue
+        '''
+
+    def _parse_jira_field(self, jira_issue_fields, at_name_jira):
+        field_mapping = {
+            'summary': self._parse_string_field,
+            'description': self._parse_string_field,
+            'created': self._parse_date_field,
+            'updated': self._parse_date_field,
+            'creator': self._parse_author_details,
+            'reporter': self._parse_author_details,
+            'issuetype': self._parse_string_field,
+            'priority': self._parse_string_field,
+            'status': self._parse_string_field,
+            'versions': self._parse_array_field,
+            'components': self._parse_array_field,
+            'labels': self._parse_array_field,
+            'resolution': self._parse_string_field,
+            'fixVersions': self._parse_array_field,
+            'assignee': self._parse_author_details,
+            'issuelinks': self._parse_issue_links,
+            'parent': self._parse_parent_issue,
+            'timeoriginalestimate': self._parse_string_field,
+            'environment': self._parse_string_field
+        }
+
+        correct_function = field_mapping.get(at_name_jira)
+        return correct_function(jira_issue_fields, at_name_jira)
+
+    def _parse_string_field(self, jira_issue_fields, at_name_jira):
+        attribute = getattr(jira_issue_fields, at_name_jira)
+        if hasattr(attribute, 'name'):
+            return getattr(attribute, 'name')
+        else:
+            return attribute
+
+    def _parse_date_field(self, jira_issue_fields, at_name_jira):
+        return dateutil.parser.parse(getattr(jira_issue_fields, at_name_jira))
+
+    def _parse_parent_issue(self, jira_issue_fields, at_name_jira):
+        return self._get_issue_id_by_system_id(jira_issue_fields.parent.key)
+
+    def _parse_author_details(self, jira_issue_fields, at_name_jira):
+        people = getattr(jira_issue_fields, at_name_jira)
+        if people is not None:
+            return self._get_people(people.name, people.emailAddress, people.displayName)
+        return None
+
+    def _parse_array_field(self, jira_issue_fields, at_name_jira):
+        array_field = getattr(jira_issue_fields, at_name_jira)
+        new_array = []
+        for value in array_field:
+            if hasattr(value, 'name'):
+                new_array.extend(getattr(value, 'name').split(" "))
+            else:
+                new_array.extend(value.split(" "))
+
+        return new_array
+
+    def _parse_issue_links(self, jira_issue_fields, at_name_jira):
+        links = []
+        for issue_link in getattr(jira_issue_fields, at_name_jira):
+            if hasattr(issue_link, 'outwardIssue'):
+                issue_id = self._get_issue_id_by_system_id(issue_link.outwardIssue.key)
+                effect = issue_link.type.outward
+            else:
+                issue_id = self._get_issue_id_by_system_id(issue_link.inwardIssue.key)
+                effect = issue_link.type.inward
+
+            links.append({'issue_id': issue_id, 'type': issue_link.type.name, 'effect': effect})
+        return links
 
     def _process_issue(self, issue_key):
         """
@@ -184,7 +315,7 @@ class JiraBackend(BaseBackend):
                 pass
 
         if time.time() >= timeout_start + timeout:
-            logger.error('Could not get issue: %s' % issue)
+            logger.error('Could not get issue: %s' % issue_key)
             return
 
         logger.debug('Processing issue %s via url %s' % (issue,
@@ -192,17 +323,29 @@ class JiraBackend(BaseBackend):
         logger.debug('Got fields: %s' % vars(issue.fields))
 
         # Transform jira issue to mongo issue
-        new_issue = self._transform_jira_issue(issue)
-        logger.debug('Transformed issue: %s' % new_issue)
+        mongo_issue = self._transform_jira_issue(issue)
+        logger.debug('Transformed issue: %s' % mongo_issue)
 
         # Go through all events and set back issue items till we get the original one
         events = []
         for history in reversed(issue.changelog.histories):
             i = 0
-            for item in reversed(history.items):
-                logger.debug('Processing changelog entry: %s' % vars(item))
+
+            created_at = dateutil.parser.parse(history.created)
+
+            # It can happen that an event does not have an author (e.g., ZOOKEEPER-2218)
+            author_id = None
+            if hasattr(history, 'author'):
+                author_id = self._get_people(history.author.name, name=history.author.displayName,
+                                             email=history.author.emailAddress)
+
+            for jira_event in reversed(history.items):
+                unique_event_id = str(history.id)+"%%"+str(i)
+                logger.debug('Processing changelog entry: %s' % vars(jira_event))
+
                 # Create event list
-                (event, newly_created) = self._process_event(history, item, i, new_issue)
+                event, newly_created = self._process_event(created_at, author_id, jira_event, unique_event_id,
+                                                           mongo_issue)
                 logger.debug('Newly created?: %s, Resulting event: %s' % (newly_created, event))
 
                 # Append to list if event is not stored in db
@@ -210,25 +353,23 @@ class JiraBackend(BaseBackend):
                     events.append(event)
 
                 # Set back issue
-                self._set_back_issue(new_issue, event)
+                #self._set_back_issue(new_issue, event)
 
                 i += 1
-        logger.debug('Original issue to store: %s' % new_issue)
+        logger.debug('Original issue to store: %s' % mongo_issue)
 
-        # Store issue
-        if new_issue.id is None:
-            # We need to set the status to open here, as this is the first status for every issue
-            new_issue.status = 'Open'
+        # We need to set the status to open here, as this is the first status for every issue
+        mongo_issue.status = 'Open'
 
-        issue_id = new_issue.save().id
+        # Update issue
+        mongo_issue.save()
+
         # Set issue_id for event list and bulk write
         if events:
-            for event in events:
-                event.issue_id = issue_id
             Event.objects.insert(events, load_bulk=False)
 
         # Store comments of issue
-        self._process_comments(issue, issue_id)
+        self._process_comments(issue, mongo_issue.id)
 
     def _process_comments(self, issue, issue_id):
 
@@ -239,7 +380,8 @@ class JiraBackend(BaseBackend):
             logger.debug('Processing comment: %s' % comment)
             created_at = dateutil.parser.parse(comment.created)
             try:
-                IssueComment.objects(external_id=comment.id, issue_id=issue_id).get()
+                mongo_comment = IssueComment.objects(external_id=comment.id, issue_id=issue_id).get()
+                logger.debug('Comment already in database, id: %s' % mongo_comment.id)
                 continue
             except DoesNotExist:
                 mongo_comment = IssueComment(
@@ -268,7 +410,191 @@ class JiraBackend(BaseBackend):
 
         return issue_id
 
-    def _process_event(self, history, item, i, issue):
+    def _set_back_mongo_issue(self, mongo_issue, mongo_at_name, jira_event):
+        function_mapping = {
+            'title': self._set_back_string_field,
+            'desc': self._set_back_string_field,
+            'issue_type': self._set_back_string_field,
+            'priority': self._set_back_string_field,
+            'status': self._set_back_string_field,
+            'affects_versions': self._set_back_array_field,
+            'components': self._set_back_array_field,
+            'labels': self._set_back_array_field,
+            'resolution': self._set_back_string_field,
+            'fix_versions': self._set_back_array_field,
+            'assignee_id': self._set_back_assignee,
+            'issue_links': self._set_back_issue_links,
+            'parent_issue_id': self._set_back_parent_id,
+            'original_time_estimate': self._set_back_string_field,
+            'environment': self._set_back_string_field,
+        }
+
+        correct_function = function_mapping[mongo_at_name]
+        correct_function(mongo_issue, mongo_at_name, jira_event)
+
+    def _set_back_string_field(self, mongo_issue, mongo_at_name, jira_event):
+        setattr(mongo_issue, mongo_at_name, getattr(jira_event, 'fromString'))
+
+    def _set_back_array_field(self, mongo_issue, mongo_at_name, jira_event):
+        old_value = getattr(jira_event, 'fromString')
+        new_value = getattr(jira_event, 'toString')
+
+        item_list = getattr(mongo_issue, mongo_at_name)
+
+        if old_value:
+            for old_label in old_value.split(" "):
+                item_list.append(old_label)
+
+        if new_value:
+            for new_label in new_value.split(" "):
+                item_list.remove(new_label)
+
+        setattr(mongo_issue, mongo_at_name, item_list)
+
+    def _set_back_assignee(self, mongo_issue, mongo_at_name, jira_event):
+        old_assignee = getattr(jira_event, 'from')
+
+        if old_assignee is not None:
+            setattr(mongo_issue, mongo_at_name, self._get_people(old_assignee))
+        else:
+            setattr(mongo_issue, mongo_at_name, None)
+
+    def _set_back_parent_id(self, mongo_issue, mongo_at_name, jira_event):
+        old_parent_id = getattr(jira_event, 'from')
+
+        if old_parent_id is not None:
+            setattr(mongo_issue, mongo_at_name, self._get_issue_id_by_system_id(old_parent_id, refresh_key=True))
+        else:
+            setattr(mongo_issue, mongo_at_name, None)
+
+    def _set_back_issue_links(self, mongo_issue, mongo_at_name, jira_event):
+        item_list = getattr(mongo_issue, mongo_at_name)
+
+        # Everything that is added in this event must be removed
+        if getattr(jira_event, 'to'):
+            issue_id = self._get_issue_id_by_system_id(getattr(jira_event, 'to'), refresh_key=True)
+            link_type, link_effect = self._get_issue_link_type_and_effect(getattr(jira_event, 'toString'))
+            found_index = 0
+            for stored_issue in item_list:
+                if stored_issue['issue_id'] == issue_id and stored_issue['effect'].lower() == link_effect.lower() and \
+                                stored_issue['type'].lower() == link_type.lower():
+                    break
+                found_index += 1
+            del item_list[found_index]
+
+        # Everything that was before, must be added
+        if getattr(jira_event, 'from'):
+            issue_id = self._get_issue_id_by_system_id(getattr(jira_event, 'from'), refresh_key=True)
+            link_type, link_effect = self._get_issue_link_type_and_effect(getattr(jira_event, 'fromString'))
+
+            already_in_list = False
+            for stored_issue in item_list:
+                if stored_issue['issue_id'] == issue_id and stored_issue['effect'].lower() == link_effect.lower() \
+                        and stored_issue['type'].lower() == link_type.lower():
+                    already_in_list = True
+
+            if not already_in_list:
+                item_list.append({'issue_id': issue_id, 'type': link_type, 'effect': link_effect})
+
+        setattr(mongo_issue, mongo_at_name, item_list)
+
+    def _get_issue_link_type_and_effect(self, msg_string):
+        if "Blocked" in msg_string:
+            return "Blocked", "Blocked"
+        elif "is blocked by" in msg_string:
+            return "Blocker", "is blocked by"
+        elif "issue blocks" in msg_string:
+            return "Blocker", "blocks"
+        elif "is cloned by" in msg_string:
+            return "Cloners", "is cloned by"
+        elif "is a clone of" in msg_string:
+            return "Cloners", "is cloned by"
+        elif "Is contained by" in msg_string or "is contained by" in msg_string:
+            return "Container", "is contained by"
+        elif "contains" in msg_string:
+            return "Container", "contains"
+        elif "Dependent" in msg_string:
+            return "Dependent", "Dependent"
+        elif "is duplicated by" in msg_string:
+            return "Duplicate", "is duplicated by"
+        elif "duplicates" in msg_string:
+            return "Duplicate", "duplicates"
+        elif "is part of" in msg_string:
+            return "Incorporates", "is part of"
+        elif "incorporates" in msg_string:
+            return "Incorporates", "incorporates"
+        elif "is related to" in msg_string:
+            return "Reference", "is related to"
+        elif "relates to" in msg_string:
+            return "Reference", "relates to"
+        elif "is broken by" in msg_string:
+            return "Regression", "is broken by"
+        elif "breaks" in msg_string:
+            return "Regression", "breaks"
+        elif "is required by" in msg_string:
+            return "Required", "is required by"
+        elif "requires" in msg_string:
+            return "Required", "requires"
+        elif "is superceded by" in msg_string:
+            return "Supercedes", "is superceded by"
+        elif "supercedes" in msg_string:
+            return "Supercedes", "supercedes"
+        elif "is depended upon by" in msg_string:
+            return "Dependent", "is depended upon by"
+        elif "depends upon" in msg_string:
+            return "Dependent", "depends upon"
+        elif "depends on" in msg_string:
+            return "Dependent", "depends on"
+        else:
+            logger.warning("Could not find issue type and effect of string %s" % msg_string)
+            return None, None
+
+    def _process_event(self, created_at, author_id, jira_event, unique_event_id, mongo_issue):
+        terminology_mapping = {
+            'Component': 'components',
+            'Link': 'issuelinks',
+            'Fix Version': 'fixVersions'
+        }
+
+        is_new_event = True
+        try:
+            mongo_event = Event.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
+            is_new_event = False
+        except DoesNotExist:
+            mongo_event = Event(
+                external_id=unique_event_id,
+                issue_id=mongo_issue.id,
+                created_at=created_at,
+                author_id=author_id
+            )
+
+        # We need to map back the jira terminology from getting the issues to the terminology in the histories
+        try:
+            bz_at_name = terminology_mapping[getattr(jira_event, 'field')]
+        except KeyError:
+            bz_at_name = getattr(jira_event, 'field')
+
+        # Map jira terminology to our terminology
+        try:
+            mongo_event.status = self.at_mapping[bz_at_name]
+        except KeyError:
+            logger.warning('Mapping for attribute %s not found.' % bz_at_name)
+            mongo_event.status = bz_at_name
+
+        # Check if the mongo_issue has the attribute.
+        # If yes: We can use the mongo_issue to set the old and new value of the event
+        # If no: We use the added / removed fields
+        if hasattr(mongo_issue, mongo_event.status):
+            mongo_event.new_value = copy.deepcopy(getattr(mongo_issue, mongo_event.status))
+            self._set_back_mongo_issue(mongo_issue, mongo_event.status, jira_event)
+            mongo_event.old_value = copy.deepcopy(getattr(mongo_issue, mongo_event.status))
+        else:
+            mongo_event.new_value = getattr(jira_event, 'toString')
+            mongo_event.old_value = getattr(jira_event, 'fromString')
+
+        return mongo_event, is_new_event
+
+        '''
         created_at = dateutil.parser.parse(history.created)
 
         # Maybe this should be  changed when it becomes important
@@ -294,10 +620,7 @@ class JiraBackend(BaseBackend):
                 status=self._replace_item_field_for_storage(item.field).lower(),
             )
 
-        # It can happen that an event does not have an author (e.g., ZOOKEEPER-2218)
-        if hasattr(history, 'author'):
-            event.author_id = self._get_people(history.author.name, name=history.author.displayName,
-                                               email=history.author.emailAddress)
+
 
         # Some fields need to be taken care of (e.g., getting the objectid of the assignee)
         if item.field == 'assignee':
@@ -320,6 +643,7 @@ class JiraBackend(BaseBackend):
             event.new_value = item.toString
 
         return event, True
+        '''
 
     def _replace_item_field_for_storage(self, status):
         stati_replacements = {

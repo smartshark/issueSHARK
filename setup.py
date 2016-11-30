@@ -7,7 +7,7 @@ setup(
     name='issueSHARK',
     version='0.1',
     description='Collect data from issue tracking systems',
-    install_requires=['requests', 'mongoengine', 'pymongo', 'python-dateutil'],
+    install_requires=['requests', 'mongoengine', 'pymongo', 'python-dateutil', 'validate_email'],
     author='Fabian Trautsch',
     author_email='ftrautsch@googlemail.com',
     url='https://github.com/smartshark/issueSHARK',

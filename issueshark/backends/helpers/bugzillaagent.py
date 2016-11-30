@@ -1,6 +1,7 @@
 import urllib.parse
 
 import requests
+import time
 
 
 class BugzillaApiException(Exception):
@@ -42,7 +43,10 @@ class BugzillaAgent(object):
         return self._send_request('bug', options)['bugs']
 
     def get_user(self, id, options=None):
-        return self._send_request('user/'+str(id), options)
+        try:
+            return self._send_request('user/'+str(id), options)['users'][0]
+        except KeyError:
+            return None
 
     def get_issue_history(self, external_issue_id, new_since=None):
         options = {}
@@ -50,7 +54,7 @@ class BugzillaAgent(object):
         if new_since is not None:
             options['new_since'] = new_since
 
-        return self._send_request(('bug/%s/history' % external_issue_id), new_since)
+        return self._send_request(('bug/%s/history' % external_issue_id), new_since)['bugs'][0]['history']
 
     def get_comments(self, external_issue_id, new_since=None):
         options = {}
@@ -58,7 +62,7 @@ class BugzillaAgent(object):
         if new_since is not None:
             options['new_since'] = new_since
 
-        return self._send_request(('bug/%s/comment' % external_issue_id), new_since)
+        return self._send_request(('bug/%s/comment' % external_issue_id), new_since)['bugs'][str(external_issue_id)]['comments']
 
     def _send_request(self, endpoint, options):
         query = '%s' % endpoint
@@ -86,11 +90,22 @@ class BugzillaAgent(object):
         request = '%s/%s' % (self.base_url, query)
 
         self.logger.info('Sending request %s...' % request)
-        resp = requests.get(request, proxies=self.proxy)
+        got_no_response = True
+        timeout_start = time.time()
+        timeout = 300  # 5 minutes
 
-        if resp.status_code != 200:
-            self.logger.error("Problem with getting data via url %s. Error: %s" % (request, resp.json()['message']))
+        # Retrieve the issue via the client and retry as long as the timeout is not running out
+        while got_no_response and time.time() < timeout_start + timeout:
+            try:
+                resp = requests.get(request, proxies=self.proxy)
+                if resp.status_code != 200:
+                    self.logger.error("Problem with getting data via url %s. Error: %s" %
+                                      (request, resp.json()['message']))
+                else:
+                    got_no_response = False
 
-        self.logger.debug('Got response: %s' % resp.json())
-
-        return resp.json()
+                self.logger.debug('Got response: %s' % resp.json())
+                return resp.json()
+            except Exception:
+                time.sleep(10)
+        self.logger.error('Something went wrong with getting data via url %s!' % request)
