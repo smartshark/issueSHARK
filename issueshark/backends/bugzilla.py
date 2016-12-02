@@ -224,6 +224,13 @@ class BugzillaBackend(BaseBackend):
 
         item_list = getattr(mongo_issue, mongo_at_name)
 
+        # Everything that is in "removed" must be added
+        if bz_event['removed']:
+            issue_id = self._get_issue_id_by_system_id(bz_event['removed'])
+            if issue_id not in [entry['issue_id'] for entry in item_list]:
+                item_list.append({'issue_id': issue_id, 'type': type_mapping[bz_event['field_name']],
+                                  'effect': bz_event['field_name']})
+
         # Everything that is in "added" must be removed
         if bz_event['added']:
             issue_id = self._get_issue_id_by_system_id(bz_event['added'])
@@ -232,14 +239,11 @@ class BugzillaBackend(BaseBackend):
                 if stored_issue['issue_id'] == issue_id:
                     break
                 found_index += 1
-            del item_list[found_index]
-
-        # Everything that is in "removed" must be added
-        if bz_event['removed']:
-            issue_id = self._get_issue_id_by_system_id(bz_event['removed'])
-            if issue_id not in [entry['issue_id'] for entry in item_list]:
-                item_list.append({'issue_id': issue_id, 'type': type_mapping[bz_event['field_name']],
-                                  'effect': bz_event['field_name']})
+            try:
+                del item_list[found_index]
+            except IndexError:
+                logger.warning('Could not process event %s completely. Did not found issue to delete Issue %s' %
+                               (bz_event, mongo_issue))
 
         setattr(mongo_issue, mongo_at_name, item_list)
 

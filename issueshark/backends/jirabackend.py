@@ -140,7 +140,7 @@ class JiraBackend(BaseBackend):
                     # Extend
                     current_value.extend(result)
                     if len(current_value) > 0 and at_name_mongo == 'issue_links':
-                        current_value = list({v['issue_id']: v for v in current_value}.values())
+                        current_value = [dict(t) for t in set([tuple(d.items()) for d in current_value])]
                     else:
                         current_value = list(set(current_value))
 
@@ -150,74 +150,6 @@ class JiraBackend(BaseBackend):
                     setattr(mongo_issue, at_name_mongo, self._parse_jira_field(jira_issue.fields, at_name_jira))
 
         return mongo_issue.save()
-
-        '''
-        updated_at = dateutil.parser.parse(jira_issue.fields.updated)
-        created_at = dateutil.parser.parse(jira_issue.fields.created)
-        try:
-            # We can not return here, as the issue might be updated. This means, that the title could be updated
-            # as well as comments and new events
-            new_issue = Issue.objects(issue_system_id=self.issue_system_id, external_id=jira_issue.key).get()
-        except DoesNotExist:
-            new_issue = Issue(
-                issue_system_id=self.issue_system_id,
-                external_id=jira_issue.key,
-            )
-
-        # if the issue is a sub type we need to set the parent
-        if hasattr(jira_issue.fields, 'parent'):
-            issue_id = self._get_issue_id_by_system_id(jira_issue.fields.parent.key)
-            new_issue.parent_issue_id = issue_id
-
-        new_issue.title = jira_issue.fields.summary
-        new_issue.desc = jira_issue.fields.description
-        new_issue.created_at = created_at
-        new_issue.updated_at = updated_at
-        new_issue.issue_type = jira_issue.fields.issuetype.name
-        new_issue.creator_id = self._get_people(jira_issue.fields.creator.name,
-                                             jira_issue.fields.creator.emailAddress,
-                                             jira_issue.fields.creator.displayName)
-        new_issue.reporter_id = self._get_people(jira_issue.fields.reporter.name,
-                                              jira_issue.fields.reporter.emailAddress,
-                                              jira_issue.fields.reporter.displayName)
-        new_issue.priority = jira_issue.fields.priority.name
-        new_issue.status = jira_issue.fields.status.name
-        new_issue.affects_versions = [version.name for version in jira_issue.fields.versions]
-        new_issue.components = [component.name for component in jira_issue.fields.components]
-
-        splitted_labels = []
-        for label in jira_issue.fields.labels:
-            splitted_labels.extend(label.split(" "))
-        new_issue.labels = splitted_labels
-
-        if jira_issue.fields.resolution is not None:
-            new_issue.resolution = jira_issue.fields.resolution.name
-
-        new_issue.environment=jira_issue.fields.environment
-        new_issue.original_time_estimate=jira_issue.fields.timeoriginalestimate
-
-        new_issue.fix_versions = [version.name for version in jira_issue.fields.fixVersions]
-
-        if jira_issue.fields.assignee is not None:
-            new_issue.assignee_id = self._get_people(jira_issue.fields.assignee.name,
-                                                     name=jira_issue.fields.assignee.displayName,
-                                                     email=jira_issue.fields.assignee.emailAddress)
-
-        if jira_issue.fields.issuelinks:
-            links = []
-            for issue_link in jira_issue.fields.issuelinks:
-                if hasattr(issue_link, 'outwardIssue'):
-                    issue_id = self._get_issue_id_by_system_id(issue_link.outwardIssue.key)
-                    effect = issue_link.type.outward
-                else:
-                    issue_id = self._get_issue_id_by_system_id(issue_link.inwardIssue.key)
-                    effect = issue_link.type.inward
-
-                links.append({'issue_id': issue_id, 'type': issue_link.type.name, 'effect': effect})
-            new_issue.issue_links = links
-
-        return new_issue
-        '''
 
     def _parse_jira_field(self, jira_issue_fields, at_name_jira):
         field_mapping = {
@@ -269,9 +201,9 @@ class JiraBackend(BaseBackend):
         new_array = []
         for value in array_field:
             if hasattr(value, 'name'):
-                new_array.extend(getattr(value, 'name').split(" "))
+                new_array.append(getattr(value, 'name'))
             else:
-                new_array.extend(value.split(" "))
+                new_array.append(value)
 
         return new_array
 
@@ -280,12 +212,12 @@ class JiraBackend(BaseBackend):
         for issue_link in getattr(jira_issue_fields, at_name_jira):
             if hasattr(issue_link, 'outwardIssue'):
                 issue_id = self._get_issue_id_by_system_id(issue_link.outwardIssue.key)
-                effect = issue_link.type.outward
+                issue_type, issue_effect = self._get_issue_link_type_and_effect(issue_link.type.outward)
             else:
                 issue_id = self._get_issue_id_by_system_id(issue_link.inwardIssue.key)
-                effect = issue_link.type.inward
+                issue_type, issue_effect = self._get_issue_link_type_and_effect(issue_link.type.inward)
 
-            links.append({'issue_id': issue_id, 'type': issue_link.type.name, 'effect': effect})
+            links.append({'issue_id': issue_id, 'type': issue_type, 'effect': issue_effect})
         return links
 
     def _process_issue(self, issue_key):
@@ -419,7 +351,7 @@ class JiraBackend(BaseBackend):
             'status': self._set_back_string_field,
             'affects_versions': self._set_back_array_field,
             'components': self._set_back_array_field,
-            'labels': self._set_back_array_field,
+            'labels': self._set_back_labels,
             'resolution': self._set_back_string_field,
             'fix_versions': self._set_back_array_field,
             'assignee_id': self._set_back_assignee,
@@ -432,6 +364,23 @@ class JiraBackend(BaseBackend):
         correct_function = function_mapping[mongo_at_name]
         correct_function(mongo_issue, mongo_at_name, jira_event)
 
+    # Somehow the labels are handled differently than, e.g., components. Different labels are split by a space
+    def _set_back_labels(self, mongo_issue, mongo_at_name, jira_event):
+        old_value = getattr(jira_event, 'fromString')
+        new_value = getattr(jira_event, 'toString')
+
+        item_list = getattr(mongo_issue, mongo_at_name)
+
+        if old_value:
+            for item in old_value.split(" "):
+                item_list.append(item)
+
+        if new_value:
+            for item in new_value.split(" "):
+                item_list.remove(item)
+
+        setattr(mongo_issue, mongo_at_name, item_list)
+
     def _set_back_string_field(self, mongo_issue, mongo_at_name, jira_event):
         setattr(mongo_issue, mongo_at_name, getattr(jira_event, 'fromString'))
 
@@ -442,12 +391,10 @@ class JiraBackend(BaseBackend):
         item_list = getattr(mongo_issue, mongo_at_name)
 
         if old_value:
-            for old_label in old_value.split(" "):
-                item_list.append(old_label)
+            item_list.append(old_value)
 
         if new_value:
-            for new_label in new_value.split(" "):
-                item_list.remove(new_label)
+            item_list.remove(new_value)
 
         setattr(mongo_issue, mongo_at_name, item_list)
 
@@ -480,7 +427,15 @@ class JiraBackend(BaseBackend):
                                 stored_issue['type'].lower() == link_type.lower():
                     break
                 found_index += 1
-            del item_list[found_index]
+
+            try:
+                del item_list[found_index]
+            except IndexError:
+                logger.warning('Could not find issue link %s to issue %s to delete in issue %s' % (
+                    getattr(jira_event, 'toString'),
+                    getattr(jira_event, 'to'),
+                    mongo_issue)
+                )
 
         # Everything that was before, must be added
         if getattr(jira_event, 'from'):
@@ -503,11 +458,11 @@ class JiraBackend(BaseBackend):
             return "Blocked", "Blocked"
         elif "is blocked by" in msg_string:
             return "Blocker", "is blocked by"
-        elif "issue blocks" in msg_string:
+        elif "blocks" in msg_string:
             return "Blocker", "blocks"
         elif "is cloned by" in msg_string:
             return "Cloners", "is cloned by"
-        elif "is a clone of" in msg_string:
+        elif "is a clone of" in msg_string or "is cloned as" in msg_string:
             return "Cloners", "is cloned by"
         elif "Is contained by" in msg_string or "is contained by" in msg_string:
             return "Container", "is contained by"
@@ -525,7 +480,7 @@ class JiraBackend(BaseBackend):
             return "Incorporates", "incorporates"
         elif "is related to" in msg_string:
             return "Reference", "is related to"
-        elif "relates to" in msg_string:
+        elif "relates" in msg_string:
             return "Reference", "relates to"
         elif "is broken by" in msg_string:
             return "Regression", "is broken by"
@@ -553,7 +508,8 @@ class JiraBackend(BaseBackend):
         terminology_mapping = {
             'Component': 'components',
             'Link': 'issuelinks',
-            'Fix Version': 'fixVersions'
+            'Fix Version': 'fixVersions',
+            'Version': 'versions'
         }
 
         is_new_event = True
@@ -570,16 +526,16 @@ class JiraBackend(BaseBackend):
 
         # We need to map back the jira terminology from getting the issues to the terminology in the histories
         try:
-            bz_at_name = terminology_mapping[getattr(jira_event, 'field')]
+            jira_at_name = terminology_mapping[getattr(jira_event, 'field')]
         except KeyError:
-            bz_at_name = getattr(jira_event, 'field')
+            jira_at_name = getattr(jira_event, 'field')
 
         # Map jira terminology to our terminology
         try:
-            mongo_event.status = self.at_mapping[bz_at_name]
+            mongo_event.status = self.at_mapping[jira_at_name]
         except KeyError:
-            logger.warning('Mapping for attribute %s not found.' % bz_at_name)
-            mongo_event.status = bz_at_name
+            logger.warning('Mapping for attribute %s not found.' % jira_at_name)
+            mongo_event.status = jira_at_name
 
         # Check if the mongo_issue has the attribute.
         # If yes: We can use the mongo_issue to set the old and new value of the event
@@ -593,176 +549,6 @@ class JiraBackend(BaseBackend):
             mongo_event.old_value = getattr(jira_event, 'fromString')
 
         return mongo_event, is_new_event
-
-        '''
-        created_at = dateutil.parser.parse(history.created)
-
-        # Maybe this should be  changed when it becomes important
-        system_id = str(history.id)+"%%"+str(i)
-
-        # The event can only exist, if the issue is existent
-        if issue.id is not None:
-            # Try to get the event. If it is already existent, then return directly
-            try:
-                event = Event.objects(external_id=system_id, issue_id=issue.id).get()
-                return event, False
-            except DoesNotExist:
-                event = Event(
-                    external_id=system_id,
-                    issue_id=issue.id,
-                    created_at=created_at,
-                    status=self._replace_item_field_for_storage(item.field).lower(),
-                )
-        else:
-            event = Event(
-                external_id=system_id,
-                created_at=created_at,
-                status=self._replace_item_field_for_storage(item.field).lower(),
-            )
-
-
-
-        # Some fields need to be taken care of (e.g., getting the objectid of the assignee)
-        if item.field == 'assignee':
-            if getattr(item, 'from') is not None:
-                event.old_value = self._get_people(getattr(item, 'from'))
-            if item.to is not None:
-                event.new_value = self._get_people(item.to)
-        elif item.field == 'Parent':
-            if getattr(item, 'from') is not None:
-                event.old_value = self._get_issue_id_by_system_id(getattr(item, 'from'), refresh_key=True)
-            if item.to is not None:
-                event.new_value = self._get_issue_id_by_system_id(item.to, refresh_key=True)
-        elif item.field == 'Link':
-            if getattr(item, 'from') is not None:
-                event.old_value = self._get_issue_id_by_system_id(getattr(item, 'from'), refresh_key=True)
-            if item.to is not None:
-                event.new_value = self._get_issue_id_by_system_id(item.to, refresh_key=True)
-        else:
-            event.old_value = item.fromString
-            event.new_value = item.toString
-
-        return event, True
-        '''
-
-    def _replace_item_field_for_storage(self, status):
-        stati_replacements = {
-            'assignee': 'assigned',
-            'summary': 'renamed'
-        }
-
-        # Replace the status message so that it is the same as with github
-        if status in stati_replacements:
-            return stati_replacements[status]
-        else:
-            return status
-
-    def _set_back_issue(self, issue, event):
-        if event.status == 'description':
-            issue.desc = event.old_value
-        elif event.status == 'priority':
-            issue.priority = event.old_value
-        elif event.status == 'status':
-            issue.status = event.old_value
-        elif event.status == 'resolution':
-            issue.resolution = event.old_value
-        elif event.status == 'renamed':
-            issue.title = event.old_value
-        elif event.status == 'issuetype':
-            issue.issue_type = event.old_value
-        elif event.status == 'environment':
-            issue.environment = event.old_value
-        elif event.status == 'timeoriginalestimate':
-            issue.original_time_estimate = event.old_value
-        elif event.status == 'assigned':
-            if event.old_value is not None:
-                issue.assignee_id = event.old_value
-            else:
-                issue.assignee_id = None
-        elif event.status == 'parent':
-            if event.old_value is not None:
-                issue.parent_issue_id = event.old_value
-            else:
-                issue.parent_issue_id = None
-        elif event.status == 'version':
-            # If a version was removed, we need to add it to get the older state
-            if not event.new_value and event.old_value:
-                issue.affects_versions.append(event.old_value)
-
-            if not event.old_value and event.new_value:
-                issue.affects_versions.remove(event.new_value)
-
-            if event.old_value and event.new_value:
-                issue.affects_versions.add(event.old_value)
-                issue.affects_versions.remove(event.new_value)
-        elif event.status == 'component':
-            # If a component was removed, we need to add it to get the older state
-            if not event.new_value and event.old_value:
-                issue.components.append(event.old_value)
-
-            if not event.old_value and event.new_value:
-                issue.components.remove(event.new_value)
-
-            if event.old_value and event.new_value:
-                issue.components.add(event.old_value)
-                issue.components.remove(event.new_value)
-
-        elif event.status == 'labels':
-            # If a label was removed, we need to add it to get the older state
-            if not event.new_value and event.old_value:
-                for old_label in event.old_value.split(" "):
-                    issue.labels.append(old_label)
-
-            if not event.old_value and event.new_value:
-                for new_label in event.new_value.split(" "):
-                    issue.labels.remove(new_label)
-
-            if event.old_value and event.new_value:
-                for old_label in event.old_value.split(" "):
-                    issue.labels.append(old_label)
-
-                # It can happen, that one label gets renamed into two separate labels (e.g. ZOOKEEPER-2512)
-                for new_label in event.new_value.split(" "):
-                    issue.labels.remove(new_label)
-        elif event.status == 'fix version':
-            # If a fixed version was removed, we need to add it to get the older state
-            if not event.new_value and event.old_value:
-                issue.fix_versions.append(event.old_value)
-
-            if not event.old_value and event.new_value:
-                issue.fix_versions.remove(event.new_value)
-
-            if event.old_value and event.new_value:
-                issue.fix_versions.append(event.old_value)
-                issue.fix_versions.remove(event.new_value)
-        elif event.status == 'link':
-            # If a link was removed, we need to add it to get the older state
-            if event.new_value is None:
-                # Here information is lost! We can not know the type and effect of this issuelink, as it is not in the
-                # data!
-                issue.issue_links.append({
-                    'issue_id': event.old_value, 'type': None, 'effect': None
-                })
-            else:
-                index_of_found_entry = 0
-                for issue_link in issue.issue_links:
-                    if issue_link['issue_id'] == event.new_value:
-                        break
-                    index_of_found_entry += 1
-                try:
-                    del issue.issue_links[index_of_found_entry]
-                except IndexError:
-                    logger.warning('Could not delete issue link of issue %s with event %s' % (issue, event))
-        elif event.status == 'attachment' or event.status == 'release note' or event.status == 'remoteissuelink' or \
-             event.status == 'comment' or event.status == 'hadoop flags' or event.status == 'timeestimate' or \
-             event.status == 'tags' or event.status == 'duedate' or event.status == 'timespent' or \
-             event.status == 'worklogid' or event.status == 'flags' or event.status == 'reproduced in' or \
-             event.status == 'infra-members' or event.status == 'workflow' or event.status == 'key' or \
-             event.status == 'project':
-            # Ignore these fields
-            return
-        else:
-            logger.warning('Item field "%s" not handled' % event.status)
 
     def _get_newest_key_for_issue(self, old_key):
         # We query the saved issue and access it via our jira connection. The jira connection will give us back

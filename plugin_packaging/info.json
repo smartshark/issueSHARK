@@ -5,6 +5,32 @@
     "plugin_type": "other",
     "linux_libraries": [
     ],
+    "created_collections": [
+		{
+			"name": "issue_system",
+			"shard_key": {"url": "hashed"}
+		},
+        {
+			"name": "issue",
+			"shard_key": {"external_id": 1, "issue_system_id": 1},
+			"unique": true
+		},
+        {
+			"name": "event",
+			"shard_key": {"external_id": 1, "issue_id": 1},
+			"unique": true
+		},
+        {
+			"name": "issue_comment",
+			"shard_key": {"external_id": 1, "issue_id": 1},
+			"unique": true
+		},
+        {
+			"name": "people",
+			"shard_key": {"email": 1, "name": 1},
+			"unique": true
+		}
+	],
     "description": "Plugin to collect data from issue tracking systems.",
     "requires": [],
     "arguments": [
