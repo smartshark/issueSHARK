@@ -509,7 +509,9 @@ class JiraBackend(BaseBackend):
             'Component': 'components',
             'Link': 'issuelinks',
             'Fix Version': 'fixVersions',
-            'Version': 'versions'
+            'Version': 'versions',
+            'Labels': 'labels',
+            'Parent': 'parent'
         }
 
         is_new_event = True
