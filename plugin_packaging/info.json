@@ -8,26 +8,26 @@
     "created_collections": [
 		{
 			"name": "issue_system",
-			"shard_key": {"url": "hashed"}
+			"shard_key": [{"url": "hashed"}]
 		},
         {
 			"name": "issue",
-			"shard_key": {"external_id": 1, "issue_system_id": 1},
+			"shard_key": [{"external_id": 1}, {"issue_system_id": 1}],
 			"unique": true
 		},
         {
 			"name": "event",
-			"shard_key": {"external_id": 1, "issue_id": 1},
+			"shard_key": [{"external_id": 1}, {"issue_id": 1}],
 			"unique": true
 		},
         {
 			"name": "issue_comment",
-			"shard_key": {"external_id": 1, "issue_id": 1},
+			"shard_key": [{"external_id": 1}, {"issue_id": 1}],
 			"unique": true
 		},
         {
 			"name": "people",
-			"shard_key": {"email": 1, "name": 1},
+			"shard_key": [{"email": 1}, {"name": 1}],
 			"unique": true
 		}
 	],
@@ -39,7 +39,7 @@
             "required": true,
             "position": 1,
             "type": "install",
-            "description": ""
+            "description": "path to root folder of plugin"
         },
         {
             "name": "plugin_path",
