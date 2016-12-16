@@ -92,7 +92,7 @@
                "type":"StringType",
                "logical_type":"Name",
                "field_name":"desc",
-               "desc": "Description of the issue",
+               "desc": "Description of the issue"
             },
             {  
                "type":"DateType",
@@ -184,7 +184,7 @@
                "type":"ArrayType",
                "logical_type":"Name",
                "field_name":"issue_links",
-               "desc": "Object of an issue link that includes more information about the link to another issue."
+               "desc": "Object of an issue link that includes more information about the link to another issue.",
                "fields": [
                   {
                      "type":"ObjectIdType",

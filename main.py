@@ -46,8 +46,8 @@ def start():
     logger.debug("Found the following backends: %s" % ', '.join(backend_choices))
 
     parser = argparse.ArgumentParser(description='Collects information from different issue tracking systems.')
-    parser.add_argument('-U', '--db-user', help='Database user name', default='root')
-    parser.add_argument('-P', '--db-password', help='Database user password', default='root')
+    parser.add_argument('-U', '--db-user', help='Database user name', default=None)
+    parser.add_argument('-P', '--db-password', help='Database user password', default=None)
     parser.add_argument('-DB', '--db-database', help='Database name', default='smartshark')
     parser.add_argument('-H', '--db-hostname', help='Name of the host, where the database server is running',
                         default='localhost')
