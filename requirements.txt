@@ -1,0 +1,6 @@
+mongoengine
+pymongo
+requests
+python-dateutil
+validate_email
+jira

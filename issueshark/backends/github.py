@@ -11,7 +11,7 @@ import logging
 import requests
 import dateutil.parser
 
-from issueshark.mongomodels import *
+from pycoshark.mongomodels import *
 
 logger = logging.getLogger('backend')
 STATE_ALL = 'all'

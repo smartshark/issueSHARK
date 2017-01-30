@@ -7,10 +7,9 @@ import copy
 from issueshark.backends.basebackend import BaseBackend
 from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
 from validate_email import validate_email
-import urllib.parse
 import logging
 
-from issueshark.mongomodels import Issue, People, Event, IssueComment
+from pycoshark.mongomodels import Issue, People, Event, IssueComment
 
 logger = logging.getLogger('backend')
 

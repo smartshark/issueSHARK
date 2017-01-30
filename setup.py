@@ -1,18 +1,25 @@
-import os
+#!/usr/bin/env python
+
 import sys
 
 from setuptools import setup, find_packages
 
+if not sys.version_info[0] == 3:
+    print('only python3 supported!')
+    sys.exit(1)
+
 setup(
     name='issueSHARK',
-    version='0.1',
-    description='Collect data from issue tracking systems',
-    install_requires=['requests', 'mongoengine >= 0.11.0', 'pymongo', 'python-dateutil', 'validate_email', 'jira'],
+    version='1.0.0',
     author='Fabian Trautsch',
-    author_email='ftrautsch@googlemail.com',
+    author_email='trautsch@cs.uni-goettingen.de',
+    description='Collect data from issue tracking systems',
+    install_requires=['mongoengine', 'pymongo', 'requests', 'python-dateutil', 'validate_email', 'jira', 'pycoshark>=1.0.0'],
+    dependency_links=['git+https://github.com/smartshark/pycoSHARK.git@1.0.0#egg=pycoshark-1.0.0'],
     url='https://github.com/smartshark/issueSHARK',
-    test_suite='tests',
+    download_url='https://github.com/smartshark/issueSHARK/zipball/master',
     packages=find_packages(),
+    test_suite ='tests',
     zip_safe=False,
     include_package_data=True,
     classifiers=[

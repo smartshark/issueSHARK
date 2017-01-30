@@ -12,7 +12,7 @@ from jira import JIRA, JIRAError
 
 import logging
 
-from issueshark.mongomodels import *
+from pycoshark.mongomodels import *
 
 
 logger = logging.getLogger('backend')

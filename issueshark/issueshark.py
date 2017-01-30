@@ -6,7 +6,7 @@ import sys
 import datetime
 from mongoengine import connect, DoesNotExist
 from issueshark.backends.basebackend import BaseBackend
-from issueshark.mongomodels import Project, IssueSystem
+from pycoshark.mongomodels import Project, IssueSystem
 
 logger = logging.getLogger("main")
 
