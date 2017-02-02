@@ -4,3 +4,4 @@ requests
 python-dateutil
 validate_email
 jira
+git+https://github.com/smartshark/pycoSHARK.git@1.0.0#egg=pycoshark-1.0.0
