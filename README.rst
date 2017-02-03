@@ -145,7 +145,7 @@ you can add them by:
 
 --token <TOKEN>, -t <TOKEN>: Token to use for accessing the ITS (e.g., `github token <https://github.com/blog/1509-personal-api-tokens>`_); Default: None
 
---backend  <BACKENDNAME>, -b <BACKENDNAME>: Backend to use for the issue parsing; Required
+--backend <BACKENDNAME>, -b <BACKENDNAME>: Backend to use for the issue parsing; Required
 
 --issue-user <ISSUEUSER>, -iU <ISSUEUSER>: Username to use the issue tracking system; Default: None
 
