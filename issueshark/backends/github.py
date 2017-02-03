@@ -20,21 +20,50 @@ STATE_OPEN = 'open'
 
 
 class GitHubAPIError(Exception):
+    """
+    Exception that is thrown if an error with the github API occur.
+    """
     pass
 
 
 class GithubBackend(BaseBackend):
+    """
+    Backend that collects issue from github
+    """
     @property
     def identifier(self):
+        """
+        Identifier of the backend (github)
+        """
         return 'github'
 
     def __init__(self, cfg, issue_system_id, project_id):
+        """
+        Initialization
+        Initializes the people dictionary see: :func:`~issueshark.backends.github.GithubBackend._get_people`
+
+
+        :param cfg: holds als configuration. Object of class :class:`~issueshark.config.Config`
+        :param issue_system_id: id of the issue system for which data should be collected. :class:`bson.objectid.ObjectId`
+        :param project_id: id of the project to which the issue system belongs. :class:`bson.objectid.ObjectId`
+        """
         super().__init__(cfg, issue_system_id, project_id)
 
         logger.setLevel(self.debug_level)
         self.people = {}
 
     def process(self):
+        """
+        Processes the issues from github
+
+        1. Gets the updated_at value of the last issue that was stored (newest updated issue)
+
+        2. Gets issues since this date
+
+        3. Calls for each issue :func:`~issueshark.backends.github.GithubBackend.store_issue`
+
+        4. Raises the page counter
+        """
         logger.info("Starting the collection process...")
 
         # Get last modification date (since then, we will collect bugs)
@@ -60,6 +89,18 @@ class GithubBackend(BaseBackend):
             issues = self.get_issues(pagecount=page_number, start_date=starting_date)
 
     def store_issue(self, raw_issue):
+        """
+        Transforms the issue from a github issue to our issue model
+
+        1. Transforms the issue to our model
+
+        2. Processes the comments of the issue. See: :func:`~issueshark.backends.github.GithubBackend._process_comments`
+
+        3. Processes the events of the issue. See: :func:`~issueshark.backends.github.GithubBackend._process_events`.
+        During this: set back the issue and store it again.
+
+        :param raw_issue: like we got it from github
+        """
         logger.debug('Processing issue %s' % raw_issue)
         updated_at = dateutil.parser.parse(raw_issue['updated_at'])
         created_at = dateutil.parser.parse(raw_issue['created_at'])
@@ -86,6 +127,15 @@ class GithubBackend(BaseBackend):
         self._process_events(str(issue.external_id), mongo_issue)
 
     def _process_events(self, system_id, mongo_issue):
+        """
+        Processes events of an issue.
+
+        Go through all events and store them. If it has a commit_id in it, directly link it to the VCS data. If the
+        event affects the stored issue data (e.g., rename) set back the issue to its original state.
+
+        :param system_id: id of the issue like it is given from the github API
+        :param mongo_issue: object of our issue model
+        """
         # Get all events to the corresponding issue
         target_url = '%s/%s/events' % (self.config.tracking_url, system_id)
         events = self._send_request(target_url)
@@ -132,7 +182,12 @@ class GithubBackend(BaseBackend):
             Event.objects.insert(events_to_store, load_bulk=False)
 
     def _set_old_and_new_value_for_event(self, event, raw_event):
-        # Sets the old and new value for an event (what was changed)
+        """
+        Sets the old and new value for an event to be stored
+
+        :param event: event conforming to our model
+        :param raw_event: raw event like it is acquired from the github api
+        """
 
         if raw_event['event'] == 'assigned':
             if 'assignee' in raw_event and raw_event['assignee'] is not None:
@@ -165,6 +220,12 @@ class GithubBackend(BaseBackend):
             event.new_value = raw_event['rename']['to']
 
     def _process_comments(self, system_id, mongo_issue):
+        """
+        Processes the comments of an issue
+
+        :param system_id: id of the issue like it is given by the github API
+        :param mongo_issue: object of our issue model
+        """
         # Get all the comments for the corresponding issue
         target_url = '%s/%s/comments' % (self.config.tracking_url, system_id)
         comments = self._send_request(target_url)
@@ -191,6 +252,14 @@ class GithubBackend(BaseBackend):
             IssueComment.objects.insert(comments_to_insert, load_bulk=False)
 
     def get_issues(self, search_state='all', start_date=None, sorting='asc', pagecount=1):
+        """
+        Gets issues from the github API
+
+        :param search_state: state to be searched (e.g., all)
+        :param start_date: date from which issues should be collected
+        :param sorting: sorting of the issues
+        :param pagecount: page number
+        """
         # Creates the target url for getting the issues
         target_url = self.config.tracking_url + "?state=" + search_state + "&page=" + str(pagecount) \
             + "&per_page=100&sort=updated&direction=" + sorting
@@ -202,6 +271,11 @@ class GithubBackend(BaseBackend):
         return issues
 
     def _get_people(self, user_url):
+        """
+        Gets the person via the user url
+
+        :param user_url: url to the github API to get information of the user
+        """
         # Check if user was accessed before. This reduces the amount of API requests to github
         if user_url in self.people:
             return self.people[user_url]
@@ -224,6 +298,11 @@ class GithubBackend(BaseBackend):
         return people_id
 
     def _send_request(self, url):
+        """
+        Sends arequest using the requests library to the url specified
+
+        :param url: url to which the request should be sent
+        """
         logger.debug("Sending request to url: %s" % url)
 
         auth = None

@@ -19,15 +19,34 @@ logger = logging.getLogger('backend')
 
 
 class JiraException(Exception):
+    """
+    Exception that is thrown if there was a problem with the JIRA API
+    """
     pass
 
 
 class JiraBackend(BaseBackend):
+    """
+    Backend that collects data via the JIRA API
+    """
     @property
     def identifier(self):
+        """
+        Identifier of the backend (jira)
+        """
         return 'jira'
 
     def __init__(self, cfg, issue_system_id, project_id):
+        """
+        Initialization
+        Initializes the people dictionary see: :func:`~issueshark.backends.jirabackend.JiraBackend._get_people`
+        Initializes the attribute mapping: Maps attributes from the JIRA API to our database design
+
+
+        :param cfg: holds als configuration. Object of class :class:`~issueshark.config.Config`
+        :param issue_system_id: id of the issue system for which data should be collected. :class:`bson.objectid.ObjectId`
+        :param project_id: id of the project to which the issue system belongs. :class:`bson.objectid.ObjectId`
+        """
         super().__init__(cfg, issue_system_id, project_id)
 
         logger.setLevel(self.debug_level)
@@ -57,6 +76,18 @@ class JiraBackend(BaseBackend):
         }
 
     def process(self):
+        """
+        Processes the data from the JIRA API.
+
+        1. Connects to JIRA
+
+        2. Gets the last stored issues updated_at field
+
+        3. Collects issues that were changed since this date
+
+        4. Calls :func:`~issueshark.backends.jirabackend.JiraBackend._process_issue` for every found issue
+        :return:
+        """
         logger.info("Starting the collection process...")
         if self.config.use_token():
             raise JiraException('Jira does not support tokens! Use issue_user and issue_password instead')
@@ -117,6 +148,11 @@ class JiraBackend(BaseBackend):
             processed_results += 50
 
     def _transform_jira_issue(self, jira_issue):
+        """
+        Transforms the Jira issue to our issue model
+
+        :param jira_issue: original jira issue, like we got it from the Jira API
+        """
         try:
             # We can not return here, as the issue might be updated. This means, that the title could be updated
             # as well as comments and new events
@@ -152,6 +188,12 @@ class JiraBackend(BaseBackend):
         return mongo_issue.save()
 
     def _parse_jira_field(self, jira_issue_fields, at_name_jira):
+        """
+        Parses the jira fields from the original issue
+
+        :param jira_issue_fields: fields of the original jira issue
+        :param at_name_jira: attribute name that should be returned
+        """
         field_mapping = {
             'summary': self._parse_string_field,
             'description': self._parse_string_field,
@@ -178,6 +220,12 @@ class JiraBackend(BaseBackend):
         return correct_function(jira_issue_fields, at_name_jira)
 
     def _parse_string_field(self, jira_issue_fields, at_name_jira):
+        """
+        Parses the string jira fields from the original issue
+
+        :param jira_issue_fields: fields of the original jira issue
+        :param at_name_jira: attribute name that should be returned
+        """
         attribute = getattr(jira_issue_fields, at_name_jira)
         if hasattr(attribute, 'name'):
             return getattr(attribute, 'name')
@@ -185,18 +233,42 @@ class JiraBackend(BaseBackend):
             return attribute
 
     def _parse_date_field(self, jira_issue_fields, at_name_jira):
+        """
+        Parses the date jira fields from the original issue
+
+        :param jira_issue_fields: fields of the original jira issue
+        :param at_name_jira: attribute name that should be returned
+        """
         return dateutil.parser.parse(getattr(jira_issue_fields, at_name_jira))
 
     def _parse_parent_issue(self, jira_issue_fields, at_name_jira):
+        """
+        Parses the parent issue field from the original issue
+
+        :param jira_issue_fields: fields of the original jira issue
+        :param at_name_jira: attribute name that should be returned
+        """
         return self._get_issue_id_by_system_id(jira_issue_fields.parent.key)
 
     def _parse_author_details(self, jira_issue_fields, at_name_jira):
+        """
+        Parses the author detail fields from the original issue
+
+        :param jira_issue_fields: fields of the original jira issue
+        :param at_name_jira: attribute name that should be returned
+        """
         people = getattr(jira_issue_fields, at_name_jira)
         if people is not None:
             return self._get_people(people.name, people.emailAddress, people.displayName)
         return None
 
     def _parse_array_field(self, jira_issue_fields, at_name_jira):
+        """
+        Parses the array fields from the original issue
+
+        :param jira_issue_fields: fields of the original jira issue
+        :param at_name_jira: attribute name that should be returned
+        """
         array_field = getattr(jira_issue_fields, at_name_jira)
         new_array = []
         for value in array_field:
@@ -208,6 +280,12 @@ class JiraBackend(BaseBackend):
         return new_array
 
     def _parse_issue_links(self, jira_issue_fields, at_name_jira):
+        """
+        Parses the issue links field from the original issue
+
+        :param jira_issue_fields: fields of the original jira issue
+        :param at_name_jira: attribute name that should be returned
+        """
         links = []
         for issue_link in getattr(jira_issue_fields, at_name_jira):
             if hasattr(issue_link, 'outwardIssue'):
@@ -222,16 +300,22 @@ class JiraBackend(BaseBackend):
 
     def _process_issue(self, issue_key):
         """
-        There are the following steps executed:
-        1) Transformation of the jira issue into a mongo db issue (can directly be saved)
-        2) Go through the whole history of the jira issue, create events and set back the values
-        3) This way, we get the ORIGINAL issue that was posted in jira, which is then saved in the issue collection
-        --> Some things can not be turned back, e.g. issue links, as there is information missing in the changelog
-        4) Comments of the issue are processed (and stored)
+        Processes the issue.
 
-        :param jira_client: connection to the jira instance
+        1. Transformation of the jira issue into a mongo db issue (can directly be saved).\
+        See: :func:`~issueshark.backends.jirabackend.JiraBackend._transform_jira_issue`
+
+        2. Go through the whole history of the jira issue, create events and set back the values. \
+        See: :func:`~issueshark.backends.jirabackend.JiraBackend._process_event`
+
+        3. This way, we get the ORIGINAL issue that was posted in jira, which is then saved in the issue collection \
+        --> Some things can not be turned back, e.g. issue links, as there is information missing in the changelog
+
+        4.  Comments of the issue are processed (and stored). \
+        See: :func:`~issueshark.backends.jirabackend.JiraBackend._process_comments`
+
+
         :param issue_key: key of the issue (e.g. ZOOKEEPER-2124)
-        :return:
         """
         issue_not_retrieved = True
         timeout_start = time.time()
@@ -284,9 +368,6 @@ class JiraBackend(BaseBackend):
                 if newly_created:
                     events.append(event)
 
-                # Set back issue
-                #self._set_back_issue(new_issue, event)
-
                 i += 1
         logger.debug('Original issue to store: %s' % mongo_issue)
 
@@ -304,6 +385,13 @@ class JiraBackend(BaseBackend):
         self._process_comments(issue, mongo_issue.id)
 
     def _process_comments(self, issue, issue_id):
+        """
+        Processes the comments from an jira issue
+
+        :param issue: original jira issue
+        :param issue_id:  Object of class :class:`bson.objectid.ObjectId`. Identifier of the document that holds \
+        the issue information
+        """
 
         # Go through all comments of the issue
         comments_to_insert = []
@@ -332,6 +420,15 @@ class JiraBackend(BaseBackend):
             IssueComment.objects.insert(comments_to_insert, load_bulk=False)
 
     def _get_issue_id_by_system_id(self, system_id, refresh_key=False):
+        """
+        Gets the issue id like it is stored in the mongodb for a system id (like the id that was assigned by jira to
+        the issue)
+
+
+        :param system_id: id of the issue like it was assigned by jira
+        :param refresh_key: if set to true, jira is contacted to get the newest system id for this issue
+        :return:
+        """
         if refresh_key:
             system_id = self._get_newest_key_for_issue(system_id)
 
@@ -343,6 +440,13 @@ class JiraBackend(BaseBackend):
         return issue_id
 
     def _set_back_mongo_issue(self, mongo_issue, mongo_at_name, jira_event):
+        """
+        Sets back the issue like it stored in the mongodb for this jira event
+
+        :param mongo_issue: issue like it is stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue that is affected by the event
+        :param jira_event: original event that was acquired by the jira api
+        """
         function_mapping = {
             'title': self._set_back_string_field,
             'desc': self._set_back_string_field,
@@ -364,8 +468,15 @@ class JiraBackend(BaseBackend):
         correct_function = function_mapping[mongo_at_name]
         correct_function(mongo_issue, mongo_at_name, jira_event)
 
-    # Somehow the labels are handled differently than, e.g., components. Different labels are split by a space
     def _set_back_labels(self, mongo_issue, mongo_at_name, jira_event):
+        """
+        Set back the labels array for the event. Somehow the labels are handled differently than, e.g., components. \
+         Different labels are split by a space
+
+        :param mongo_issue: issue like it is stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue that is affected by the event
+        :param jira_event: original event that was acquired by the jira api
+        """
         old_value = getattr(jira_event, 'fromString')
         new_value = getattr(jira_event, 'toString')
 
@@ -382,9 +493,23 @@ class JiraBackend(BaseBackend):
         setattr(mongo_issue, mongo_at_name, item_list)
 
     def _set_back_string_field(self, mongo_issue, mongo_at_name, jira_event):
+        """
+        Set back the string fields for the event.
+
+        :param mongo_issue: issue like it is stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue that is affected by the event
+        :param jira_event: original event that was acquired by the jira api
+        """
         setattr(mongo_issue, mongo_at_name, getattr(jira_event, 'fromString'))
 
     def _set_back_array_field(self, mongo_issue, mongo_at_name, jira_event):
+        """
+        Set back the array fields for the event.
+
+        :param mongo_issue: issue like it is stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue that is affected by the event
+        :param jira_event: original event that was acquired by the jira api
+        """
         old_value = getattr(jira_event, 'fromString')
         new_value = getattr(jira_event, 'toString')
 
@@ -399,6 +524,13 @@ class JiraBackend(BaseBackend):
         setattr(mongo_issue, mongo_at_name, item_list)
 
     def _set_back_assignee(self, mongo_issue, mongo_at_name, jira_event):
+        """
+        Set back the assignee field for the event.
+
+        :param mongo_issue: issue like it is stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue that is affected by the event
+        :param jira_event: original event that was acquired by the jira api
+        """
         old_assignee = getattr(jira_event, 'from')
 
         if old_assignee is not None:
@@ -407,6 +539,13 @@ class JiraBackend(BaseBackend):
             setattr(mongo_issue, mongo_at_name, None)
 
     def _set_back_parent_id(self, mongo_issue, mongo_at_name, jira_event):
+        """
+        Set back the parent id field for the event.
+
+        :param mongo_issue: issue like it is stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue that is affected by the event
+        :param jira_event: original event that was acquired by the jira api
+        """
         old_parent_id = getattr(jira_event, 'from')
 
         if old_parent_id is not None:
@@ -415,6 +554,13 @@ class JiraBackend(BaseBackend):
             setattr(mongo_issue, mongo_at_name, None)
 
     def _set_back_issue_links(self, mongo_issue, mongo_at_name, jira_event):
+        """
+        Set back the issue links field for the event.
+
+        :param mongo_issue: issue like it is stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue that is affected by the event
+        :param jira_event: original event that was acquired by the jira api
+        """
         item_list = getattr(mongo_issue, mongo_at_name)
 
         # Everything that is added in this event must be removed
@@ -454,6 +600,11 @@ class JiraBackend(BaseBackend):
         setattr(mongo_issue, mongo_at_name, item_list)
 
     def _get_issue_link_type_and_effect(self, msg_string):
+        """
+        Gets the correct issue link type and effect from a message
+
+        :param msg_string: String from which type and effect should be acquired
+        """
         if "Blocked" in msg_string:
             return "Blocked", "Blocked"
         elif "is blocked by" in msg_string:
@@ -505,6 +656,17 @@ class JiraBackend(BaseBackend):
             return None, None
 
     def _process_event(self, created_at, author_id, jira_event, unique_event_id, mongo_issue):
+        """
+        Processes the jira event for an issue.
+
+        Goes through the event and sets back the mongo issue accordingly.
+
+        :param created_at: date when the issue was created
+        :param author_id: id of the author, who created this issue
+        :param jira_event: original jira event, like it was acquired from the REST API
+        :param unique_event_id: unique id to identify the event
+        :param mongo_issue: issue that conforms to our issue model
+        """
         terminology_mapping = {
             'Component': 'components',
             'Link': 'issuelinks',
@@ -553,9 +715,13 @@ class JiraBackend(BaseBackend):
         return mongo_event, is_new_event
 
     def _get_newest_key_for_issue(self, old_key):
-        # We query the saved issue and access it via our jira connection. The jira connection will give us back
-        # the NEW value (e.g., if we access via the key ZOOKEEPER-659, we will get back BOOKKEEPER-691 which is the
-        # new value
+        """
+        Gets the newes key for an issue. We query the saved issue and access it via our jira connection.
+        The jira connection will give us back the NEW value (e.g., if we access via the key ZOOKEEPER-659,
+        we will get back BOOKKEEPER-691 which is the new value
+        :param old_key: old issue key
+        """
+
         try:
             issue = self.jira_client.issue(old_key, fields='summary')
             if old_key != issue.key:
@@ -566,6 +732,13 @@ class JiraBackend(BaseBackend):
             return old_key
 
     def _get_people(self, username, email=None, name=None):
+        """
+        Gets the document from the people collection. First checks the people dictionary to save API requests
+
+        :param username: username of the person
+        :param email: email of the person
+        :param name: name of the person
+        """
         # Check if user was accessed before. This reduces the amount of API requests
         if username in self.people:
             return self.people[username]
@@ -583,6 +756,11 @@ class JiraBackend(BaseBackend):
         return people_id
 
     def _get_user(self, username):
+        """
+        Gets the user via the jira client
+
+        :param username: username of the jira user
+        """
         # Get user via the jira client
         if username is None:
             return None

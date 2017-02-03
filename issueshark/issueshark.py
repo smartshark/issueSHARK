@@ -12,10 +12,29 @@ logger = logging.getLogger("main")
 
 
 class IssueSHARK(object):
+    """
+    Main application
+
+    1. Connects to MongoDB
+
+    2. Searches for the project in it
+
+    3. Creates an issue system document, if not already in the database. If it is in database, it updates the \
+    last_updated field
+
+    4. Finds fitting backend via :func:`~issueshark.backends.basebackend.BaseBackend.find_fitting_backend`
+
+    5. Calls :func:`~issueshark.backends.basebackend.BaseBackend.process` on the found backend
+    """
     def __init__(self):
         pass
 
     def start(self, cfg):
+        """
+        Starts the collection process
+
+        :param cfg: holds all configuration parameters. Object of class :class:`~issueshark.config.Config`
+        """
         logger.setLevel(cfg.get_debug_level())
         start_time = timeit.default_timer()
 

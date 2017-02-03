@@ -1,10 +1,23 @@
 import logging
 
+
 class ConfigValidationException(Exception):
+    """
+    Exception that is thrown if the config of class :class:`~issueshark.config.Config` could not be validated
+    """
     pass
 
+
 class Config(object):
+    """
+    Config object, that holds all configuration parameters
+    """
     def __init__(self, args):
+        """
+        Initialization
+
+        :param args: argumentparser of the class :class:`argparse.ArgumentParser`
+        """
         self.tracking_url = args.issueurl.rstrip('/')
         self.identifier = args.backend
         self.token = args.token
@@ -31,6 +44,15 @@ class Config(object):
         self._validate_config()
 
     def _validate_config(self):
+        """
+        Validates the config
+
+        1. Either token or issue-user must be set, but not both
+
+        2. Issue user and password must be set if either of them is set
+
+        3. Proxy user and password must be set if either of them is set
+        """
         if self.token is None and self.issue_user is None:
             raise ConfigValidationException('Token or issue user and issue password must be set.')
 
@@ -46,6 +68,9 @@ class Config(object):
             raise ConfigValidationException('Proxy user and password must be set if either of them are not None.')
 
     def get_debug_level(self):
+        """
+        Gets the correct debug level, based on :mod:`logging`
+        """
         choices = {
             'DEBUG': logging.DEBUG,
             'INFO': logging.INFO,
@@ -57,12 +82,18 @@ class Config(object):
         return choices[self.debug]
 
     def _get_proxy_string(self):
+        """
+        Gets the proxy string to do the requests
+        """
         if self.proxy_password is None or self.proxy_username is None:
             return 'http://'+self.proxy_host+':'+self.proxy_port
         else:
             return 'http://'+self.proxy_username+':'+self.proxy_password+'@'+self.proxy_host+':'+self.proxy_port
 
     def get_proxy_dictionary(self):
+        """
+        Creates the proxy directory for the requests
+        """
         if self._use_proxy():
             proxies = {
                 'http': self._get_proxy_string(),
@@ -74,12 +105,18 @@ class Config(object):
         return None
 
     def use_token(self):
+        """
+        Checks if token is set
+        """
         if self.token is None:
             return False
 
         return True
 
     def _use_proxy(self):
+        """
+        Checks if a proxy is used
+        """
         if self.proxy_host is None:
             return False
 

@@ -15,11 +15,27 @@ logger = logging.getLogger('backend')
 
 
 class BugzillaBackend(BaseBackend):
+    """
+    Backend that collects data from a Bugzilla REST API
+    """
     @property
     def identifier(self):
+        """
+        Identifier (bugzilla)
+        """
         return 'bugzilla'
 
     def __init__(self, cfg, issue_system_id, project_id):
+        """
+        Initialization
+        Initializes the people dictionary see: :func:`~issueshark.backends.bugzilla.BugzillaBackend._get_people`
+        Initializes the attribute mapping: Maps attributes from the bugzilla API to our database design
+
+
+        :param cfg: holds als configuration. Object of class :class:`~issueshark.config.Config`
+        :param issue_system_id: id of the issue system for which data should be collected. :class:`bson.objectid.ObjectId`
+        :param project_id: id of the project to which the issue system belongs. :class:`bson.objectid.ObjectId`
+        """
         super().__init__(cfg, issue_system_id, project_id)
 
         logger.setLevel(self.debug_level)
@@ -47,6 +63,17 @@ class BugzillaBackend(BaseBackend):
         }
 
     def process(self):
+        """
+        Gets all the issues and their updates
+
+        1. Gets the last stored issues updated_at field
+
+        2. Gets all issues that was last change since this value
+
+        3. Processes the results in 50-steps
+
+        4. For each issue calls: :func:`issueshark.backends.bugzilla.BugzillaBackend._process_issue`
+        """
         self.bugzilla_agent = BugzillaAgent(logger, self.config)
         # Get last modification date (since then, we will collect bugs)
         last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at')\
@@ -76,6 +103,24 @@ class BugzillaBackend(BaseBackend):
             processed_results += 50
 
     def _process_issue(self, issue):
+        """
+        Processes the issue in several steps:
+
+        1. Get all comments. See: :func:`issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_comments`
+
+        2. Get the whole issue history.\
+        See: :func:`issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_issue_history`
+
+        3. Transforms the issue to our issue model. \
+        See: :func:`issueshark.backends.bugzilla.BugzillaBackend._transform_issue`
+
+        4. Go through the history of the issue (newest to oldes) and set back the issue step by step. During this \
+        processing: Store the events. See: :func:`issueshark.backends.bugzilla.BugzillaBackend._process_event`
+
+        5. Process all comments. See: :func:`issueshark.backends.bugzilla.BugzillaBackend._process_comments`
+
+        :param issue: issue that was got from the bugzilla REST API
+        """
         # Transform issue
         comments = self.bugzilla_agent.get_comments(issue['id'])
         histories = self.bugzilla_agent.get_issue_history(issue['id'])
@@ -117,6 +162,13 @@ class BugzillaBackend(BaseBackend):
         self._process_comments(mongo_issue.id, comments)
 
     def _process_comments(self, mongo_issue_id, comments):
+        """
+        Processes the comments for an issue
+
+        :param mongo_issue_id: Object of class :class:`bson.objectid.ObjectId`. Identifier of the document that holds \
+        the issue information
+        :param comments: comments that were received from the bugzilla API
+        """
         # Go through all comments of the issue
         comments_to_insert = []
         logger.info('Processing %d comments...' % (len(comments)-1))
@@ -143,12 +195,21 @@ class BugzillaBackend(BaseBackend):
                 logger.debug('Resulting comment: %s' % mongo_comment)
                 comments_to_insert.append(mongo_comment)
 
-
         # If comments need to be inserted -> bulk insert
         if comments_to_insert:
             IssueComment.objects.insert(comments_to_insert, load_bulk=False)
 
     def _process_event(self, unique_event_id, bz_event, mongo_issue, change_date, author_id):
+        """
+        Processes the event. During the event processing the Issue is set back to its original state
+        before the event occured.
+
+        :param unique_event_id: unique identifier of the event
+        :param bz_event: event that was received from the bugzilla API
+        :param mongo_issue: issue that is/should be stored in the mongodb
+        :param change_date: date when the event was created
+        :param author_id: :class:`bson.objectid.ObjectId` of the author of the event
+        """
         is_new_event = True
         try:
             mongo_event = Event.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
@@ -188,6 +249,13 @@ class BugzillaBackend(BaseBackend):
         return mongo_event, is_new_event
 
     def _set_back_mongo_issue(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Method to set back the issue stored in the mongodb
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
         function_mapping = {
             'title': self._set_back_string_field,
             'priority': self._set_back_priority,
@@ -207,6 +275,13 @@ class BugzillaBackend(BaseBackend):
         correct_function(mongo_issue, mongo_at_name, bz_event)
 
     def _set_back_priority(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Sets back the priority of the issue before the event
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
         if bz_event['removed'] == 'enhancement':
             mongo_issue.issue_type = 'Enhancement'
         else:
@@ -215,6 +290,13 @@ class BugzillaBackend(BaseBackend):
         mongo_issue.priority = bz_event['removed']
 
     def _set_back_issue_links(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Sets back the link to the issue before the event
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
         type_mapping = {
             'blocks': 'Blocker',
             'dupe_of': 'Duplicate',
@@ -247,15 +329,36 @@ class BugzillaBackend(BaseBackend):
         setattr(mongo_issue, mongo_at_name, item_list)
 
     def _set_back_assignee(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Sets back the assignee of the issue before the event
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
         if bz_event['removed']:
             setattr(mongo_issue, mongo_at_name, self._get_people(bz_event['removed']))
         else:
             setattr(mongo_issue, mongo_at_name, None)
 
     def _set_back_string_field(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Sets back normal string fields, e.g., title, of the issue before the event
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
         setattr(mongo_issue, mongo_at_name, bz_event['removed'])
 
     def _set_back_array_field(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Sets back array fields, e.g., components, of the issue before the event
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
         item_list = getattr(mongo_issue, mongo_at_name)
         # Everything that is in "added" must be removed
         if bz_event['added']:
@@ -273,6 +376,12 @@ class BugzillaBackend(BaseBackend):
         setattr(mongo_issue, mongo_at_name, item_list)
 
     def _parse_bz_field(self, bz_issue, at_name_bz):
+        """
+        Parses fields from the bugzilla issue
+
+        :param bz_issue: bugzilla issue (returned by the API)
+        :param at_name_bz: attribute name that should be parsed
+        """
         field_mapping = {
             'assigned_to_detail': self._parse_author_details,
             'blocks': self._parse_issue_links,
@@ -297,6 +406,12 @@ class BugzillaBackend(BaseBackend):
         return correct_function(bz_issue, at_name_bz)
 
     def _parse_author_details(self, bz_issue, at_name_bz):
+        """
+        Parses author details from the bugzilla issue
+
+        :param bz_issue: bugzilla issue (returned by the API)
+        :param at_name_bz: attribute name that should be parsed
+        """
         if 'email' in bz_issue[at_name_bz]:
             return self._get_people(bz_issue[at_name_bz]['name'], bz_issue[at_name_bz]['email'],
                                     bz_issue[at_name_bz]['real_name'])
@@ -304,12 +419,30 @@ class BugzillaBackend(BaseBackend):
             return self._get_people(bz_issue[at_name_bz]['name'])
 
     def _parse_string_field(self, bz_issue, at_name_bz):
+        """
+        Parses string fields from the bugzilla issue
+
+        :param bz_issue: bugzilla issue (returned by the API)
+        :param at_name_bz: attribute name that should be parsed
+        """
         return bz_issue[at_name_bz]
 
     def _parse_array_field(self, bz_issue, at_name_bz):
+        """
+        Parses array fields from the bugzilla issue
+
+        :param bz_issue: bugzilla issue (returned by the API)
+        :param at_name_bz: attribute name that should be parsed
+        """
         return bz_issue[at_name_bz]
 
     def _parse_issue_links(self, bz_issue, at_name_bz):
+        """
+        Parses the issue links from the bugzilla issue
+
+        :param bz_issue: bugzilla issue (returned by the API)
+        :param at_name_bz: attribute name that should be parsed
+        """
         type_mapping = {
             'blocks': 'Blocker',
             'dupe_of': 'Duplicate',
@@ -335,9 +468,22 @@ class BugzillaBackend(BaseBackend):
         return issue_links
 
     def _parse_date_field(self, bz_issue, at_name_bz):
+        """
+        Parses the date field from the bugzilla issue
+
+        :param bz_issue: bugzilla issue (returned by the API)
+        :param at_name_bz: attribute name that should be parsed
+        """
         return dateutil.parser.parse(bz_issue[at_name_bz])
 
     def _transform_issue(self, bz_issue, bz_comments):
+        """
+        Transforms the issue from an bugzilla issue to our issue model
+
+        :param bz_issue: bugzilla issue (returned by the API)
+        :param bz_comments: comments to the bugzilla issue (as the first comment is the description of the issue)
+        :return:
+        """
         try:
             mongo_issue = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(bz_issue['id'])).get()
         except DoesNotExist:
@@ -384,9 +530,21 @@ class BugzillaBackend(BaseBackend):
         return mongo_issue.save()
 
     def _get_mongo_attribute(self, field_name):
+        """
+        Maps the attirbutes of the bugzilla api to the attributes of the document stored in the mongodb
+
+        :param field_name: field name that should be mapped
+        """
         return self.at_mapping[field_name]
 
     def _get_people(self, username, email=None, name=None):
+        """
+        Gets people from the people collection
+
+        :param username: username of the user
+        :param email: email of the user
+        :param name: name of the user
+        """
         # Check if user was accessed before. This reduces the amount of API requests
         if username in self.people:
             return self.people[username]
@@ -418,6 +576,11 @@ class BugzillaBackend(BaseBackend):
         return people_id
 
     def _get_issue_id_by_system_id(self, system_id):
+        """
+        Gets the issue by their id that was assigned by the bugzilla ITS
+
+        :param system_id: id of the issue in the bugzilla ITS
+        """
         try:
             issue_id = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(system_id)).only('id').get().id
         except DoesNotExist:

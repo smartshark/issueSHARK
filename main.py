@@ -16,8 +16,7 @@ def setup_logging(default_path=os.path.dirname(os.path.realpath(__file__))+"/log
         Setup logging configuration
 
         :param default_path: path to the logger configuration
-        :param default_level: defines the default logging level if configuration file is not found
-        (default:logging.INFO)
+        :param default_level: defines the default logging level if configuration file is not found(default:logging.INFO)
         """
         path = default_path
         if os.path.exists(path):
@@ -30,8 +29,8 @@ def setup_logging(default_path=os.path.dirname(os.path.realpath(__file__))+"/log
 
 def start():
     """
-    Starts the application. First parses the different command line arguments and then it gives these to the mecoApp
-    :return:
+    Starts the application. First parses the different command line arguments and then it gives these to
+    :class:`~issueshark.issueshark.IssueSHARK`
     """
     setup_logging()
     logger = logging.getLogger("main")
