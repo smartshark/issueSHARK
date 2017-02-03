@@ -1,3 +1,10 @@
+==========
+issueSHARK
+==========
+
+.. image:: https://travis-ci.org/smartshark/pycoSHARK.svg?branch=master
+    :target: https://travis-ci.org/smartshark/pycoSHARK
+
 ============
 Introduction
 ============
