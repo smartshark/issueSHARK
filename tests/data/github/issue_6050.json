@@ -1,0 +1,51 @@
+{
+    "url": "https://api.github.com/repos/composer/composer/issues/6050",
+    "repository_url": "https://api.github.com/repos/composer/composer",
+    "labels_url": "https://api.github.com/repos/composer/composer/issues/6050/labels{/name}",
+    "comments_url": "https://api.github.com/repos/composer/composer/issues/6050/comments",
+    "events_url": "https://api.github.com/repos/composer/composer/issues/6050/events",
+    "html_url": "https://github.com/composer/composer/issues/6050",
+    "id": 199360298,
+    "number": 6050,
+    "title": "Local path package does not autoload classes",
+    "user": {
+      "login": "TomasVotruba",
+      "id": 924196,
+      "avatar_url": "https://avatars.githubusercontent.com/u/924196?v=3",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/TomasVotruba",
+      "html_url": "https://github.com/TomasVotruba",
+      "followers_url": "https://api.github.com/users/TomasVotruba/followers",
+      "following_url": "https://api.github.com/users/TomasVotruba/following{/other_user}",
+      "gists_url": "https://api.github.com/users/TomasVotruba/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/TomasVotruba/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/TomasVotruba/subscriptions",
+      "organizations_url": "https://api.github.com/users/TomasVotruba/orgs",
+      "repos_url": "https://api.github.com/users/TomasVotruba/repos",
+      "events_url": "https://api.github.com/users/TomasVotruba/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/TomasVotruba/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "labels": [
+      {
+        "id": 66814887,
+        "url": "https://api.github.com/repos/composer/composer/labels/Support",
+        "name": "Support",
+        "color": "fef2c0",
+        "default": false
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [
+
+    ],
+    "milestone": null,
+    "comments": 2,
+    "created_at": "2017-01-07T12:55:43Z",
+    "updated_at": "2017-01-11T08:17:12Z",
+    "closed_at": null,
+    "body": "I'm about to write post about local packages, but there is one thing that blocks me.\r\n\r\nI use [path local package](https://getcomposer.org/doc/05-repositories.md#path).\r\n\r\nI need to autoload-dev and require-dev dependencies so I could run tests on those local packages.\r\nWithout that, I have to put this into main `composer.json`, which kinda kills the decoupling to path package.\r\n\r\nIs there a way to do that?\r\n\r\n---\r\n\r\nOutput of `composer diagnose`:\r\n\r\n```json\r\nChecking composer.json: OK\r\nChecking platform settings: OK\r\nChecking git settings: OK\r\nChecking http connectivity to packagist: OK\r\nChecking https connectivity to packagist: OK\r\nChecking github.com oauth access: OK\r\nChecking disk free space: OK\r\nChecking pubkeys: \r\nTags Public Key Fingerprint: 57815BA2 7E54DC31 7ECC7CC5 573090D0  87719BA6 8F3BB723 4E5D42D0 84A14642\r\nDev Public Key Fingerprint: 4AC45767 E5EC2265 2F0C1167 CBBB8A2B  0C708369 153E328C AD90147D AFE50952\r\nOK\r\nChecking composer version: OK\r\n```"
+  }

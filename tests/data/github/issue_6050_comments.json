@@ -1,0 +1,58 @@
+[
+  {
+    "url": "https://api.github.com/repos/composer/composer/issues/comments/271799582",
+    "html_url": "https://github.com/composer/composer/issues/6050#issuecomment-271799582",
+    "issue_url": "https://api.github.com/repos/composer/composer/issues/6050",
+    "id": 271799582,
+    "user": {
+      "login": "alcohol",
+      "id": 21414,
+      "avatar_url": "https://avatars.githubusercontent.com/u/21414?v=3",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/alcohol",
+      "html_url": "https://github.com/alcohol",
+      "followers_url": "https://api.github.com/users/alcohol/followers",
+      "following_url": "https://api.github.com/users/alcohol/following{/other_user}",
+      "gists_url": "https://api.github.com/users/alcohol/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/alcohol/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/alcohol/subscriptions",
+      "organizations_url": "https://api.github.com/users/alcohol/orgs",
+      "repos_url": "https://api.github.com/users/alcohol/repos",
+      "events_url": "https://api.github.com/users/alcohol/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/alcohol/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "created_at": "2017-01-11T07:41:01Z",
+    "updated_at": "2017-01-11T07:41:13Z",
+    "body": "No, the `autoload-dev` and `require-dev` are root only attributes, meaning that they only are read from your root composer.json, not your dependencies."
+  },
+  {
+    "url": "https://api.github.com/repos/composer/composer/issues/comments/271805655",
+    "html_url": "https://github.com/composer/composer/issues/6050#issuecomment-271805655",
+    "issue_url": "https://api.github.com/repos/composer/composer/issues/6050",
+    "id": 271805655,
+    "user": {
+      "login": "TomasVotruba",
+      "id": 924196,
+      "avatar_url": "https://avatars.githubusercontent.com/u/924196?v=3",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/TomasVotruba",
+      "html_url": "https://github.com/TomasVotruba",
+      "followers_url": "https://api.github.com/users/TomasVotruba/followers",
+      "following_url": "https://api.github.com/users/TomasVotruba/following{/other_user}",
+      "gists_url": "https://api.github.com/users/TomasVotruba/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/TomasVotruba/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/TomasVotruba/subscriptions",
+      "organizations_url": "https://api.github.com/users/TomasVotruba/orgs",
+      "repos_url": "https://api.github.com/users/TomasVotruba/repos",
+      "events_url": "https://api.github.com/users/TomasVotruba/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/TomasVotruba/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "created_at": "2017-01-11T08:17:12Z",
+    "updated_at": "2017-01-11T08:17:12Z",
+    "body": "That's what I thought :(\r\n\r\nHow do you use your approach local packages tests then?"
+  }
+]

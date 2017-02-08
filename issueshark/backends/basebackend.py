@@ -77,8 +77,9 @@ class BaseBackend(metaclass=abc.ABCMeta):
         """
         BaseBackend._import_backends()
 
-        choices = []
+        choices = set()
         for sc in BaseBackend.__subclasses__():
             backend = sc(None, None, None)
-            choices.append(backend.identifier)
+            choices.add(backend.identifier)
+
         return choices

@@ -2,6 +2,7 @@ import time
 
 import sys
 import datetime
+import copy
 
 from mongoengine import DoesNotExist
 from requests.auth import HTTPBasicAuth
@@ -84,7 +85,9 @@ class GithubBackend(BaseBackend):
         page_number = 1
         while len(issues) > 0:
             for issue in issues:
-                self.store_issue(issue)
+                mongo_issue = self.store_issue(issue)
+                self._process_comments(str(issue['number']), mongo_issue)
+                self._process_events(str(issue['number']), mongo_issue)
             page_number += 1
             issues = self.get_issues(pagecount=page_number, start_date=starting_date)
 
@@ -112,19 +115,23 @@ class GithubBackend(BaseBackend):
         except DoesNotExist:
             issue = Issue(issue_system_id=self.issue_system_id, external_id=str(raw_issue['number']))
 
-        issue.creator = self._get_people(raw_issue['user']['url'])
+        labels = []
+        for label in raw_issue['labels']:
+            labels.append(label['name'])
+
+        issue.reporter_id = self._get_people(raw_issue['user']['url'])
+        issue.creator_id = issue.reporter_id
         issue.title = raw_issue['title']
         issue.desc = raw_issue['body']
         issue.updated_at = updated_at
         issue.created_at = created_at
+        issue.status = 'open'
+        issue.labels = labels
 
-        mongo_issue = issue.save()
+        if raw_issue['assignee'] is not None:
+            issue.assignee_id = self._get_people(raw_issue['assignee']['url'])
 
-        # Process comments
-        self._process_comments(str(issue.external_id), mongo_issue)
-
-        # Process events
-        self._process_events(str(issue.external_id), mongo_issue)
+        return issue.save()
 
     def _process_events(self, system_id, mongo_issue):
         """
@@ -142,7 +149,7 @@ class GithubBackend(BaseBackend):
 
         # Go through all events and create mongo objects from it
         events_to_store = []
-        for raw_event in events:
+        for raw_event in reversed(events):
             created_at = dateutil.parser.parse(raw_event['created_at'])
 
             # If the event is already saved, we can just continue, because nothing will change on the event
@@ -167,13 +174,8 @@ class GithubBackend(BaseBackend):
             if 'actor' in raw_event and raw_event['actor'] is not None:
                 event.author_id = self._get_people(raw_event['actor']['url'])
 
-            self._set_old_and_new_value_for_event(event, raw_event)
-
-            # if event is renamed, then the title was renamed and we need to overwrite the value of the mongo issue
-            # and save it again
-            if raw_event['event'] == 'renamed' and 'rename' in raw_event:
-                mongo_issue.title = raw_event['rename']['from']
-                mongo_issue.save()
+            self._set_old_and_new_value_for_event(event, raw_event, mongo_issue)
+            mongo_issue.save()
 
             events_to_store.append(event)
 
@@ -181,7 +183,7 @@ class GithubBackend(BaseBackend):
         if events_to_store:
             Event.objects.insert(events_to_store, load_bulk=False)
 
-    def _set_old_and_new_value_for_event(self, event, raw_event):
+    def _set_old_and_new_value_for_event(self, event, raw_event, mongo_issue):
         """
         Sets the old and new value for an event to be stored
 
@@ -193,21 +195,27 @@ class GithubBackend(BaseBackend):
             if 'assignee' in raw_event and raw_event['assignee'] is not None:
                 event.new_value = self._get_people(raw_event['assignee']['url'])
 
+
             #if 'assigner' in raw_event and raw_event['assigner'] is not None:
             #    event.assigner_id = self._get_people(raw_event['assigner']['url'])
 
         if raw_event['event'] == 'unassigned':
             if 'assignee' in raw_event and raw_event['assignee'] is not None:
                 event.old_value = self._get_people(raw_event['assignee']['url'])
+                mongo_issue.assignee_id = self._get_people(raw_event['assignee']['url'])
 
             #if 'assigner' in raw_event and raw_event['assigner'] is not None:
             #    event.assigner_id = self._get_people(raw_event['assigner']['url'])
 
         if raw_event['event'] == 'labeled' and 'label' in raw_event:
-            event.new_value = raw_event['label']['name']
+            event.new_value = copy.deepcopy(mongo_issue.labels)
+            mongo_issue.labels.remove(raw_event['label']['name'])
+            event.old_value = copy.deepcopy(mongo_issue.labels)
 
         if raw_event['event'] == 'unlabeled' and 'label' in raw_event:
-            event.old_value = raw_event['label']['name']
+            event.new_value = copy.deepcopy(mongo_issue.labels)
+            mongo_issue.labels.add(raw_event['label']['name'])
+            event.old_value = copy.deepcopy(mongo_issue.labels)
 
         if raw_event['event'] == 'milestoned' and 'milestone' in raw_event:
             event.new_value = raw_event['milestone']['title']
@@ -218,6 +226,8 @@ class GithubBackend(BaseBackend):
         if raw_event['event'] == 'renamed' and 'rename' in raw_event:
             event.old_value = raw_event['rename']['from']
             event.new_value = raw_event['rename']['to']
+
+            mongo_issue.title = raw_event['rename']['from']
 
     def _process_comments(self, system_id, mongo_issue):
         """

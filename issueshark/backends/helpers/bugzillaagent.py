@@ -3,6 +3,8 @@ import urllib.parse
 import requests
 import time
 
+from collections import OrderedDict
+
 
 class BugzillaApiException(Exception):
     """
@@ -101,25 +103,26 @@ class BugzillaAgent(object):
 
         return self._send_request(('bug/%s/comment' % external_issue_id), new_since)['bugs'][str(external_issue_id)]['comments']
 
-    def _send_request(self, endpoint, options):
-        """
-        Sends a request to a specific endpoint of the bugzilla API using specific options
-
-        :param endpoint: endpoint to which the request should be sent (e.g., user/)
-        :param options: options for the request
-        """
+    def _build_query(self, endpoint, options):
+        if options is not None:
+            sorted_options = OrderedDict(sorted(options.items()))
+        else:
+            sorted_options = None
         query = '%s' % endpoint
 
         # The api accepts two things: first arrays, where we need to set the name all the time before the value
         # meaning: product: ['Firefox', 'Ant'] will be transformed to &product=Firefox&product=Ant
         # Second, they accept normal strings
-        if options is not None:
-            for key, value in options.items():
+        if sorted_options is not None:
+            for key, value in sorted_options.items():
                 if isinstance(value, list):
                     for item in value:
                         query += '&%s=%s' % (key, item)
                 else:
-                    query += '&%s=%s' % (key, value)
+                    if 'last_change_time' in key:
+                        query += '&%s=%s' % (key, urllib.parse.quote_plus(str(value)))
+                    else:
+                        query += '&%s=%s' % (key, value)
 
         if self.api_key is not None:
             query += '&api_key=%s' % self.api_key
@@ -130,7 +133,16 @@ class BugzillaAgent(object):
 
         # We replace the first '&' with an '?'
         query = query.replace('&', '?', 1)
-        request = '%s/%s' % (self.base_url, query)
+        return '%s/%s' % (self.base_url, query)
+
+    def _send_request(self, endpoint, options):
+        """
+        Sends a request to a specific endpoint of the bugzilla API using specific options
+
+        :param endpoint: endpoint to which the request should be sent (e.g., user/)
+        :param options: options for the request
+        """
+        request = self._build_query(endpoint, options)
 
         self.logger.info('Sending request %s...' % request)
         got_no_response = True

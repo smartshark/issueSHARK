@@ -52,6 +52,8 @@ class Config(object):
         2. Issue user and password must be set if either of them is set
 
         3. Proxy user and password must be set if either of them is set
+
+        4. Proxy host and port must be set if either of them is set
         """
         if self.token is None and self.issue_user is None:
             raise ConfigValidationException('Token or issue user and issue password must be set.')
@@ -66,6 +68,10 @@ class Config(object):
         if (self.proxy_username is not None and self.proxy_password is None) or \
                 (self.proxy_password is not None and self.proxy_username is None):
             raise ConfigValidationException('Proxy user and password must be set if either of them are not None.')
+
+        if (self.proxy_host is not None and self.proxy_port is None) or \
+                (self.proxy_port is not None and self.proxy_host is None):
+            raise ConfigValidationException('Proxy host and port must be set if either of them are not None.')
 
     def get_debug_level(self):
         """
