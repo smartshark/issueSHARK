@@ -46,25 +46,25 @@ class ConfigMock(object):
 class GithubBackendTest(unittest.TestCase):
 
     def setUp(self):
-        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/people.json", 'r') as people_file:
+        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/people.json", 'r', encoding='utf-8') as people_file:
             self.person = json.load(people_file)
 
-        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6131.json", 'r') as issues_file:
+        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6131.json", 'r', encoding='utf-8') as issues_file:
             self.issue_6131 = json.load(issues_file)
 
-        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6131_events.json", 'r') as event_file:
+        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6131_events.json", 'r', encoding='utf-8') as event_file:
             self.events_issue_6131 = json.load(event_file)
 
-        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6131_comments.json", 'r') as cmt_file:
+        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6131_comments.json", 'r', encoding='utf-8') as cmt_file:
             self.comments_issue_6131 = json.load(cmt_file)
 
-        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6050.json", 'r') as issues_file:
+        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6050.json", 'r', encoding='utf-8') as issues_file:
             self.issue_6050 = json.load(issues_file)
 
-        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6050_events.json", 'r') as event_file:
+        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6050_events.json", 'r', encoding='utf-8') as event_file:
             self.events_issue_6050 = json.load(event_file)
 
-        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6050_comments.json", 'r') as cmt_file:
+        with open(os.path.dirname(os.path.realpath(__file__)) + "/data/github/issue_6050_comments.json", 'r', encoding='utf-8') as cmt_file:
             self.comments_issue_6050 = json.load(cmt_file)
 
         # Create testconfig
