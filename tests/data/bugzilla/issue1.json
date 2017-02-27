@@ -1,0 +1,66 @@
+{
+   "alias":[
+
+   ],
+   "assigned_to":"notifications@ant.apache.org",
+   "assigned_to_detail":{
+      "email":"notifications@ant.apache.org",
+      "id":48744,
+      "name":"notifications@ant.apache.org",
+      "real_name":"Ant Notifications List"
+   },
+   "blocks" : [
+   ],
+   "cc":[
+
+   ],
+   "cc_detail":[
+
+   ],
+   "classification":"Unclassified",
+   "component":"Core tasks",
+   "creation_time":"2000-09-07T20:20:32Z",
+   "creator":"anand@avnisoft.com",
+   "creator_detail":{
+      "email":"anand@avnisoft.com",
+      "id":120,
+      "name":"anand@avnisoft.com",
+      "real_name":"Anand K Sankaran"
+   },
+   "deadline":null,
+   "depends_on" : [
+   ],
+   "dupe_of": null,
+   "flags":[
+
+   ],
+   "groups":[
+
+   ],
+   "id":1,
+   "is_cc_accessible":true,
+   "is_confirmed":false,
+   "is_creator_accessible":true,
+   "is_open":false,
+   "keywords" : [
+      "PatchAvailable",
+      "Keyword2"
+   ],
+   "last_change_time":"2008-02-22T12:18:59Z",
+   "op_sys":"All",
+   "platform":"All",
+   "priority":"P1",
+   "product":"Ant",
+   "qa_contact":"",
+   "resolution":"WORKSFORME",
+   "see_also":[
+
+   ],
+   "severity":"normal",
+   "status":"CLOSED",
+   "summary":"The \"java\" task doesn't work. BugRat Report#85",
+   "target_milestone":"---",
+   "url":"",
+   "version":"1.2",
+   "whiteboard":""
+}

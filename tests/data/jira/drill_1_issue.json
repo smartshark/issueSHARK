@@ -1,0 +1,670 @@
+{
+   "expand":"renderedFields,names,schema,transitions,operations,editmeta,changelog",
+   "id":"12606268",
+   "self":"https://issues.apache.org/jira/rest/api/2/issue/12606268",
+   "key":"DRILL-1",
+   "fields":{
+      "issuetype":{
+         "self":"https://issues.apache.org/jira/rest/api/2/issuetype/4",
+         "id":"4",
+         "description":"An improvement or enhancement to an existing feature or task.",
+         "iconUrl":"https://issues.apache.org/jira/images/icons/issuetypes/improvement.png",
+         "name":"Improvement",
+         "subtask":false
+      },
+      "timespent":null,
+      "project":{
+         "self":"https://issues.apache.org/jira/rest/api/2/project/12313820",
+         "id":"12313820",
+         "key":"DRILL",
+         "name":"Apache Drill",
+         "avatarUrls":{
+            "48x48":"https://issues.apache.org/jira/secure/projectavatar?pid=12313820&avatarId=10011",
+            "24x24":"https://issues.apache.org/jira/secure/projectavatar?size=small&pid=12313820&avatarId=10011",
+            "16x16":"https://issues.apache.org/jira/secure/projectavatar?size=xsmall&pid=12313820&avatarId=10011",
+            "32x32":"https://issues.apache.org/jira/secure/projectavatar?size=medium&pid=12313820&avatarId=10011"
+         },
+         "projectCategory":{
+            "self":"https://issues.apache.org/jira/rest/api/2/projectCategory/10024",
+            "id":"10024",
+            "description":"Incubator related projects",
+            "name":"Incubator"
+         }
+      },
+      "fixVersions":[
+         {
+            "self":"https://issues.apache.org/jira/rest/api/2/version/12324963",
+            "id":"12324963",
+            "description":"Developer Preview",
+            "name":"0.4.0",
+            "archived":false,
+            "released":true,
+            "releaseDate":"2014-08-07"
+         }
+      ],
+      "aggregatetimespent":null,
+      "resolution":{
+         "self":"https://issues.apache.org/jira/rest/api/2/resolution/2",
+         "id":"2",
+         "description":"The problem described is an issue which will never be fixed.",
+         "name":"Won't Fix"
+      },
+      "customfield_12312322":null,
+      "customfield_12310220":"2012-09-14 08:44:50.798",
+      "customfield_12312520":null,
+      "customfield_12312323":null,
+      "customfield_12312521":"Wed May 28 22:58:39 UTC 2014",
+      "customfield_12310420":"301191",
+      "customfield_12312320":null,
+      "customfield_12310222":"1_*:*_1_*:*_54455023080_*|*_5_*:*_1_*:*_0",
+      "customfield_12312321":null,
+      "customfield_12312120":null,
+      "customfield_12312121":null,
+      "resolutiondate":"2014-05-28T22:58:39.042+0000",
+      "workratio":-1,
+      "customfield_12312328":null,
+      "customfield_12312329":null,
+      "customfield_12312326":null,
+      "customfield_12310300":null,
+      "customfield_12312327":null,
+      "customfield_12312324":null,
+      "customfield_12312325":null,
+      "lastViewed":null,
+      "watches":{
+         "self":"https://issues.apache.org/jira/rest/api/2/issue/DRILL-1/watchers",
+         "watchCount":12,
+         "isWatching":false
+      },
+      "created":"2012-09-05T16:34:55.991+0000",
+      "customfield_10022":null,
+      "priority":{
+         "self":"https://issues.apache.org/jira/rest/api/2/priority/4",
+         "iconUrl":"https://issues.apache.org/jira/images/icons/priorities/minor.png",
+         "name":"Minor",
+         "id":"4"
+      },
+      "labels":[
+
+      ],
+      "customfield_12312333":null,
+      "customfield_12312334":null,
+      "customfield_12310310":"0.0",
+      "customfield_12312331":null,
+      "customfield_12312332":null,
+      "timeestimate":null,
+      "aggregatetimeoriginalestimate":null,
+      "customfield_12312330":null,
+      "customfield_12311120":null,
+      "versions":[
+
+      ],
+      "issuelinks":[
+         {
+            "id":"12365611",
+            "self":"https://issues.apache.org/jira/rest/api/2/issueLink/12365611",
+            "type":{
+               "id":"10030",
+               "name":"Reference",
+               "inward":"is related to",
+               "outward":"relates to",
+               "self":"https://issues.apache.org/jira/rest/api/2/issueLinkType/10030"
+            },
+            "inwardIssue":{
+               "id":"12636778",
+               "key":"DRILL-48",
+               "self":"https://issues.apache.org/jira/rest/api/2/issue/12636778",
+               "fields":{
+                  "summary":"RPC interface for query submission and physical plan execution",
+                  "status":{
+                     "self":"https://issues.apache.org/jira/rest/api/2/status/6",
+                     "description":"The issue is considered finished, the resolution is correct. Issues which are not closed can be reopened.",
+                     "iconUrl":"https://issues.apache.org/jira/images/icons/statuses/closed.png",
+                     "name":"Closed",
+                     "id":"6",
+                     "statusCategory":{
+                        "self":"https://issues.apache.org/jira/rest/api/2/statuscategory/3",
+                        "id":3,
+                        "key":"done",
+                        "colorName":"green",
+                        "name":"Complete"
+                     }
+                  },
+                  "priority":{
+                     "self":"https://issues.apache.org/jira/rest/api/2/priority/3",
+                     "iconUrl":"https://issues.apache.org/jira/images/icons/priorities/major.png",
+                     "name":"Major",
+                     "id":"3"
+                  },
+                  "issuetype":{
+                     "self":"https://issues.apache.org/jira/rest/api/2/issuetype/3",
+                     "id":"3",
+                     "description":"A task that needs to be done.",
+                     "iconUrl":"https://issues.apache.org/jira/images/icons/issuetypes/task.png",
+                     "name":"Task",
+                     "subtask":false
+                  }
+               }
+            }
+         }
+      ],
+      "customfield_12312339":null,
+      "assignee":null,
+      "customfield_12312337":null,
+      "customfield_12312338":null,
+      "updated":"2014-07-31T06:32:54.672+0000",
+      "customfield_12312335":null,
+      "customfield_12312336":null,
+      "status":{
+         "self":"https://issues.apache.org/jira/rest/api/2/status/5",
+         "description":"A resolution has been taken, and it is awaiting verification by reporter. From here issues are either reopened, or are closed.",
+         "iconUrl":"https://issues.apache.org/jira/images/icons/statuses/resolved.png",
+         "name":"Resolved",
+         "id":"5",
+         "statusCategory":{
+            "self":"https://issues.apache.org/jira/rest/api/2/statuscategory/3",
+            "id":3,
+            "key":"done",
+            "colorName":"green",
+            "name":"Complete"
+         }
+      },
+      "components":[
+
+      ],
+      "timeoriginalestimate": 3600,
+      "description":"Support a Thrift-based [1] wire protocol. Contributor: Michael Hausenblas.\r\n\r\nSee [2] for the discussion.\r\n\r\n\r\n[1] http://thrift.apache.org/\r\n[2] http://mail-archives.apache.org/mod_mbox/incubator-drill-dev/201209.mbox/%3C4C785CAB-FD0E-4C5A-8D83-7AD0B7752139%40gmail.com%3E",
+      "customfield_10010":null,
+      "timetracking":{
+
+      },
+      "customfield_12312026":null,
+      "customfield_12312422":null,
+      "customfield_12312620":[
+
+      ],
+      "customfield_12312023":null,
+      "customfield_12312024":null,
+      "customfield_12312420":null,
+      "customfield_12312340":null,
+      "aggregatetimeestimate":null,
+      "customfield_12312022":null,
+      "customfield_12312341":null,
+      "customfield_12312220":null,
+      "customfield_12310921":null,
+      "customfield_12310920":"247277",
+      "summary":"Thrift-based wire protocol",
+      "creator":{
+         "self":"https://issues.apache.org/jira/rest/api/2/user?username=mhausenblas",
+         "name":"mhausenblas",
+         "emailAddress":"michael dot hausenblas at gmail dot com",
+         "avatarUrls":{
+            "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=mhausenblas&avatarId=18051",
+            "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=mhausenblas&avatarId=18051",
+            "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=mhausenblas&avatarId=18051",
+            "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=mhausenblas&avatarId=18051"
+         },
+         "displayName":"Michael Hausenblas",
+         "active":true
+      },
+      "subtasks":[
+
+      ],
+      "customfield_12310291":null,
+      "reporter":{
+         "self":"https://issues.apache.org/jira/rest/api/2/user?username=mhausenblas",
+         "name":"mhausenblas",
+         "emailAddress":"michael dot hausenblas at gmail dot com",
+         "avatarUrls":{
+            "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=mhausenblas&avatarId=18051",
+            "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=mhausenblas&avatarId=18051",
+            "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=mhausenblas&avatarId=18051",
+            "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=mhausenblas&avatarId=18051"
+         },
+         "displayName":"Michael Hausenblas",
+         "active":true
+      },
+      "customfield_12310290":null,
+      "aggregateprogress":{
+         "progress":0,
+         "total":0
+      },
+      "customfield_12311024":null,
+      "environment": "Windows",
+      "customfield_12311020":null,
+      "duedate":null,
+      "customfield_12310250":null,
+      "progress":{
+         "progress":0,
+         "total":0
+      },
+      "comment":{
+         "startAt":0,
+         "maxResults":7,
+         "total":7,
+         "comments":[
+            {
+               "self":"https://issues.apache.org/jira/rest/api/2/issue/12606268/comment/13455671",
+               "id":"13455671",
+               "author":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=clarkyzl",
+                  "name":"clarkyzl",
+                  "emailAddress":"zhuoluo dot yzl at alibaba-inc dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=clarkyzl&avatarId=30540",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=clarkyzl&avatarId=30540",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=clarkyzl&avatarId=30540",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=clarkyzl&avatarId=30540"
+                  },
+                  "displayName":"Zhuoluo Yang",
+                  "active":true
+               },
+               "body":"protobuf +1, I think it is OK to use protobuf, Yarn as a top Apache project choose protobuf and I think it's better.",
+               "updateAuthor":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=clarkyzl",
+                  "name":"clarkyzl",
+                  "emailAddress":"zhuoluo dot yzl at alibaba-inc dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=clarkyzl&avatarId=30540",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=clarkyzl&avatarId=30540",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=clarkyzl&avatarId=30540",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=clarkyzl&avatarId=30540"
+                  },
+                  "displayName":"Zhuoluo Yang",
+                  "active":true
+               },
+               "created":"2012-09-14T08:44:50.798+0000",
+               "updated":"2012-09-14T08:44:50.798+0000"
+            },
+            {
+               "self":"https://issues.apache.org/jira/rest/api/2/issue/12606268/comment/13456063",
+               "id":"13456063",
+               "author":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=ryanobjc",
+                  "name":"ryanobjc",
+                  "emailAddress":"ryanobjc at gmail dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+                  },
+                  "displayName":"ryan rawson",
+                  "active":true
+               },
+               "body":"This issue has been hashed over a lot in the Hadoop projects.  There was work done to compare thrift vs avro vs protobuf.  The conclusion was protobuf was the decision to use. \n\nPrior to this move, there had been a lot of noise about pluggable RPC transports, and whatnot.  It held up adoption of a backwards compatible serialization framework for a long time.  The problem ended up being the analysis-paralysis, rather than the specific implementation problem.  In other words, the problem was a LACK of implementation than actual REAL problems.\n\nBased on this experience, I'd strongly suggest adopting protobuf and moving on.  Forget about pluggable RPC implementations, the complexity doesnt deliver benefits.  The benefits of protobuf is that its the RPC format for Hadoop and HBase, which allows Drill to draw on the broad experience of those communities who need to implement high performance backwards compatible RPC serialization.\n\n",
+               "updateAuthor":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=ryanobjc",
+                  "name":"ryanobjc",
+                  "emailAddress":"ryanobjc at gmail dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+                  },
+                  "displayName":"ryan rawson",
+                  "active":true
+               },
+               "created":"2012-09-14T19:39:41.090+0000",
+               "updated":"2012-09-14T19:39:41.090+0000"
+            },
+            {
+               "self":"https://issues.apache.org/jira/rest/api/2/issue/12606268/comment/13458396",
+               "id":"13458396",
+               "author":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=zhiyuan.daizy",
+                  "name":"zhiyuan.daizy",
+                  "emailAddress":"zhiyuan dot daizy at taobao dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+                  },
+                  "displayName":"zhiyuan.dai",
+                  "active":true
+               },
+               "body":"I agree with rawson.",
+               "updateAuthor":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=zhiyuan.daizy",
+                  "name":"zhiyuan.daizy",
+                  "emailAddress":"zhiyuan dot daizy at taobao dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+                  },
+                  "displayName":"zhiyuan.dai",
+                  "active":true
+               },
+               "created":"2012-09-19T04:20:03.706+0000",
+               "updated":"2012-09-19T04:20:48.970+0000"
+            },
+            {
+               "self":"https://issues.apache.org/jira/rest/api/2/issue/12606268/comment/13458797",
+               "id":"13458797",
+               "author":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=mekery",
+                  "name":"mekery",
+                  "emailAddress":"micle dot bu at gmail dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=mekery&avatarId=15868",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=mekery&avatarId=15868",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=mekery&avatarId=15868",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=mekery&avatarId=15868"
+                  },
+                  "displayName":"Micle Bu",
+                  "active":true
+               },
+               "body":"protobuf +1",
+               "updateAuthor":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=mekery",
+                  "name":"mekery",
+                  "emailAddress":"micle dot bu at gmail dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=mekery&avatarId=15868",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=mekery&avatarId=15868",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=mekery&avatarId=15868",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=mekery&avatarId=15868"
+                  },
+                  "displayName":"Micle Bu",
+                  "active":true
+               },
+               "created":"2012-09-19T16:17:05.421+0000",
+               "updated":"2012-09-19T16:17:05.421+0000"
+            },
+            {
+               "self":"https://issues.apache.org/jira/rest/api/2/issue/12606268/comment/13459070",
+               "id":"13459070",
+               "author":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=kamrul",
+                  "name":"kamrul",
+                  "emailAddress":"mislam77 at yahoo dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+                  },
+                  "displayName":"Mohammad Kamrul Islam",
+                  "active":true
+               },
+               "body":"+1 for protobuf",
+               "updateAuthor":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=kamrul",
+                  "name":"kamrul",
+                  "emailAddress":"mislam77 at yahoo dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+                  },
+                  "displayName":"Mohammad Kamrul Islam",
+                  "active":true
+               },
+               "created":"2012-09-19T20:42:17.960+0000",
+               "updated":"2012-09-19T20:42:17.960+0000"
+            },
+            {
+               "self":"https://issues.apache.org/jira/rest/api/2/issue/12606268/comment/13550669",
+               "id":"13550669",
+               "author":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=tdunning",
+                  "name":"tdunning",
+                  "emailAddress":"ted dot dunning at gmail dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+                  },
+                  "displayName":"Ted Dunning",
+                  "active":true
+               },
+               "body":"I have been using the protobuf-rpc-pro package lately with very good results.  I don't have throughput measures yet, but the structure is very nice and the overhead looks pretty low.",
+               "updateAuthor":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=tdunning",
+                  "name":"tdunning",
+                  "emailAddress":"ted dot dunning at gmail dot com",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+                  },
+                  "displayName":"Ted Dunning",
+                  "active":true
+               },
+               "created":"2013-01-11T01:17:42.941+0000",
+               "updated":"2013-01-11T01:17:42.941+0000"
+            },
+            {
+               "self":"https://issues.apache.org/jira/rest/api/2/issue/12606268/comment/14011774",
+               "id":"14011774",
+               "author":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=jnadeau",
+                  "name":"jnadeau",
+                  "emailAddress":"jacques at apache dot org",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+                  },
+                  "displayName":"Jacques Nadeau",
+                  "active":true
+               },
+               "body":"No one seems to be looking at this and we are all protobuf.  Someone can reopen if they want to work on this.",
+               "updateAuthor":{
+                  "self":"https://issues.apache.org/jira/rest/api/2/user?username=jnadeau",
+                  "name":"jnadeau",
+                  "emailAddress":"jacques at apache dot org",
+                  "avatarUrls":{
+                     "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                     "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                     "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                     "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+                  },
+                  "displayName":"Jacques Nadeau",
+                  "active":true
+               },
+               "created":"2014-05-28T22:58:39.390+0000",
+               "updated":"2014-05-28T22:58:39.390+0000"
+            }
+         ]
+      },
+      "votes":{
+         "self":"https://issues.apache.org/jira/rest/api/2/issue/DRILL-1/votes",
+         "votes":0,
+         "hasVoted":false
+      },
+      "worklog":{
+         "startAt":0,
+         "maxResults":20,
+         "total":0,
+         "worklogs":[
+
+         ]
+      },
+      "customfield_12311820":"0|i16pl3:"
+   },
+   "changelog":{
+      "startAt":0,
+      "maxResults":6,
+      "total":6,
+      "histories":[
+         {
+            "id":"13673259",
+            "author":{
+               "self":"https://issues.apache.org/jira/rest/api/2/user?username=dr-alves",
+               "name":"dr-alves",
+               "emailAddress":"davidralves at gmail dot com",
+               "avatarUrls":{
+                  "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=dr-alves&avatarId=12345",
+                  "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=dr-alves&avatarId=12345",
+                  "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=dr-alves&avatarId=12345",
+                  "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=dr-alves&avatarId=12345"
+               },
+               "displayName":"David Alves",
+               "active":true
+            },
+            "created":"2013-03-13T15:32:23.052+0000",
+            "items":[
+               {
+                  "field":"Link",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":null,
+                  "to":"DRILL-48",
+                  "toString":"This issue is related to DRILL-48"
+               }
+            ]
+         },
+         {
+            "id":"13817051",
+            "author":{
+               "self":"https://issues.apache.org/jira/rest/api/2/user?username=jfarrell",
+               "name":"jfarrell",
+               "emailAddress":"jfarrell at apache dot org",
+               "avatarUrls":{
+                  "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=jfarrell&avatarId=19332",
+                  "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=jfarrell&avatarId=19332",
+                  "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=jfarrell&avatarId=19332",
+                  "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=jfarrell&avatarId=19332"
+               },
+               "displayName":"Jake Farrell",
+               "active":true
+            },
+            "created":"2013-07-31T04:04:19.275+0000",
+            "items":[
+               {
+                  "field":"Workflow",
+                  "fieldtype":"jira",
+                  "from":"12724083",
+                  "fromString":"jira",
+                  "to":"12807485",
+                  "toString":"no-reopen-closed, patch-avail"
+               }
+            ]
+         },
+         {
+            "id":"14062120",
+            "author":{
+               "self":"https://issues.apache.org/jira/rest/api/2/user?username=jfarrell",
+               "name":"jfarrell",
+               "emailAddress":"jfarrell at apache dot org",
+               "avatarUrls":{
+                  "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=jfarrell&avatarId=19332",
+                  "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=jfarrell&avatarId=19332",
+                  "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=jfarrell&avatarId=19332",
+                  "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=jfarrell&avatarId=19332"
+               },
+               "displayName":"Jake Farrell",
+               "active":true
+            },
+            "created":"2014-05-06T03:56:48.160+0000",
+            "items":[
+               {
+                  "field":"Workflow",
+                  "fieldtype":"jira",
+                  "from":"12807485",
+                  "fromString":"no-reopen-closed, patch-avail",
+                  "to":"12860326",
+                  "toString":"no-reopen-closed, patch-avail, testing"
+               }
+            ]
+         },
+         {
+            "id":"14082215",
+            "author":{
+               "self":"https://issues.apache.org/jira/rest/api/2/user?username=jnadeau",
+               "name":"jnadeau",
+               "emailAddress":"jacques at apache dot org",
+               "avatarUrls":{
+                  "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                  "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                  "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                  "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+               },
+               "displayName":"Jacques Nadeau",
+               "active":true
+            },
+            "created":"2014-05-28T22:58:39.071+0000",
+            "items":[
+               {
+                  "field":"resolution",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":null,
+                  "to":"2",
+                  "toString":"Won't Fix"
+               },
+               {
+                  "field":"status",
+                  "fieldtype":"jira",
+                  "from":"1",
+                  "fromString":"Open",
+                  "to":"5",
+                  "toString":"Resolved"
+               }
+            ]
+         },
+         {
+            "id":"14145486",
+            "author":{
+               "self":"https://issues.apache.org/jira/rest/api/2/user?username=jnadeau",
+               "name":"jnadeau",
+               "emailAddress":"jacques at apache dot org",
+               "avatarUrls":{
+                  "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                  "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                  "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                  "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+               },
+               "displayName":"Jacques Nadeau",
+               "active":true
+            },
+            "created":"2014-07-31T06:32:54.676+0000",
+            "items":[
+               {
+                  "field":"Fix Version",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":null,
+                  "to":"12324963",
+                  "toString":"0.4.0"
+               }
+            ]
+         },
+         {
+            "id":"14404574",
+            "author":{
+               "self":"https://issues.apache.org/jira/rest/api/2/user?username=pctony",
+               "name":"pctony",
+               "emailAddress":"pctony at apache dot org",
+               "avatarUrls":{
+                  "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=pctony&avatarId=10631",
+                  "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=pctony&avatarId=10631",
+                  "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=pctony&avatarId=10631",
+                  "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=pctony&avatarId=10631"
+               },
+               "displayName":"Tony Stevenson",
+               "active":true
+            },
+            "created":"2015-03-09T22:43:25.004+0000",
+            "items":[
+               {
+                  "field":"Workflow",
+                  "fieldtype":"jira",
+                  "from":"12860326",
+                  "fromString":"no-reopen-closed, patch-avail, testing",
+                  "to":"12933752",
+                  "toString":"Drill workflow"
+               }
+            ]
+         }
+      ]
+   }
+}

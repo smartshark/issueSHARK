@@ -1,0 +1,8 @@
+{
+  "can_login" : false,
+  "email" : "dev@tomcat.apache.org",
+  "groups" : [],
+  "id" : 78,
+  "name" : "dev@tomcat.apache.org",
+  "real_name" : "Tomcat Developers Mailing List"
+}

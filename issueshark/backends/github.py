@@ -125,7 +125,7 @@ class GithubBackend(BaseBackend):
         issue.desc = raw_issue['body']
         issue.updated_at = updated_at
         issue.created_at = created_at
-        issue.status = 'open'
+        issue.status = raw_issue['state']
         issue.labels = labels
 
         if raw_issue['assignee'] is not None:
@@ -149,7 +149,7 @@ class GithubBackend(BaseBackend):
 
         # Go through all events and create mongo objects from it
         events_to_store = []
-        for raw_event in reversed(events):
+        for raw_event in events:
             created_at = dateutil.parser.parse(raw_event['created_at'])
 
             # If the event is already saved, we can just continue, because nothing will change on the event
@@ -202,20 +202,15 @@ class GithubBackend(BaseBackend):
         if raw_event['event'] == 'unassigned':
             if 'assignee' in raw_event and raw_event['assignee'] is not None:
                 event.old_value = self._get_people(raw_event['assignee']['url'])
-                mongo_issue.assignee_id = self._get_people(raw_event['assignee']['url'])
 
             #if 'assigner' in raw_event and raw_event['assigner'] is not None:
             #    event.assigner_id = self._get_people(raw_event['assigner']['url'])
 
         if raw_event['event'] == 'labeled' and 'label' in raw_event:
-            event.new_value = copy.deepcopy(mongo_issue.labels)
-            mongo_issue.labels.remove(raw_event['label']['name'])
-            event.old_value = copy.deepcopy(mongo_issue.labels)
+            event.new_value = raw_event['label']['name']
 
         if raw_event['event'] == 'unlabeled' and 'label' in raw_event:
-            event.new_value = copy.deepcopy(mongo_issue.labels)
-            mongo_issue.labels.add(raw_event['label']['name'])
-            event.old_value = copy.deepcopy(mongo_issue.labels)
+            event.old_value = raw_event['label']['name']
 
         if raw_event['event'] == 'milestoned' and 'milestone' in raw_event:
             event.new_value = raw_event['milestone']['title']

@@ -1,0 +1,38 @@
+[
+  {
+    "attachment_id" : null,
+    "bug_id" : 95,
+    "count" : 0,
+    "creation_time" : "2000-09-07T20:20:32Z",
+    "creator" : "dev@tomcat.apache.org",
+    "id" : 75,
+    "is_private" : false,
+    "tags" : [],
+    "text": "Description text",
+    "time" : "2000-09-07T20:20:32Z"
+  },
+  {
+    "attachment_id" : null,
+    "bug_id" : 95,
+    "count" : 1,
+    "creation_time" : "2001-02-04T06:20:32Z",
+    "creator" : "conor@apache.org",
+    "id" : 547,
+    "is_private" : false,
+    "tags" : [],
+    "text" : "I have tested this on NT (JDK 1.1, 1.2.2, 1.3) and Linux (Redhat 6.2, JDK \n1.1.2) and could not reproduce this problem. ",
+    "time" : "2001-02-04T06:20:32Z"
+  },
+  {
+    "attachment_id" : null,
+    "bug_id" : 95,
+    "count" : 2,
+    "creation_time" : "2001-02-06T19:35:01Z",
+    "creator" : "Larry.Isaacs@sas.com",
+    "id" : 597,
+    "is_private" : false,
+    "tags" : [],
+    "text" : "For query purposes, mark as fixed for Tomcat 3.3:\nFixed in Tomcat 3.3\n",
+    "time" : "2001-02-06T19:35:01Z"
+  }
+]

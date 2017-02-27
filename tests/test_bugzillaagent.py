@@ -41,6 +41,7 @@ class BugzillaAgentTest(unittest.TestCase):
                                'https://bz.apache.org/bugzilla/rest.cgi/bug?product=Ant', 'github', None, None, None, None, None,
                                None, 'DEBUG', None)
         self.logger = logging.getLogger('root')
+
     def test_initialization_fails(self):
         conf = ConfigMock(None, None, None, None, None, None, 'Ant',
                           'https://bz.apache.org/bugzilla/rest.cgi/bug?product=Ant', 'github', None, None, None, None,

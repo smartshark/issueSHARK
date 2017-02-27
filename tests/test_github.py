@@ -104,6 +104,17 @@ class GithubBackendTest(unittest.TestCase):
         self.assertEqual('Tomáš Votruba', mongo_person.name)
 
     @mock.patch('issueshark.backends.github.GithubBackend._get_people')
+    def test_store_issue_two_times(self, mock_people):
+        mock_people.return_value = ObjectId('5899f79cfc263613115e5ccb')
+
+        gh_backend = GithubBackend(self.conf, self.issues_system_id, self.project_id)
+        gh_backend.store_issue(self.issue_6131)
+        gh_backend.store_issue(self.issue_6131)
+
+        mongo_issue = Issue.objects(external_id='6131').all()
+        self.assertEqual(1, len(mongo_issue))
+
+    @mock.patch('issueshark.backends.github.GithubBackend._get_people')
     def test_store_issue(self, mock_people):
         mock_people.return_value = ObjectId('5899f79cfc263613115e5ccb')
 
@@ -167,6 +178,21 @@ class GithubBackendTest(unittest.TestCase):
         self.assertEqual('open', mongo_issue.status)
         self.assertListEqual(['Support'], mongo_issue.labels)
 
+
+    @mock.patch('issueshark.backends.github.GithubBackend._send_request')
+    @mock.patch('issueshark.backends.github.GithubBackend._get_people')
+    def test_store_events_two_times(self, mock_people, mock_request):
+        mock_people.return_value = ObjectId('5899f79cfc263613115e5ccb')
+        mock_request.return_value = self.events_issue_6131
+
+        gh_backend = GithubBackend(self.conf, self.issues_system_id, self.project_id)
+        gh_backend.store_issue(self.issue_6131)
+        gh_backend._process_events('6131', Issue.objects(external_id='6131').get())
+        gh_backend._process_events('6131', Issue.objects(external_id='6131').get())
+
+        mongo_events = Event.objects.order_by('+created_at', '+external_id')
+        self.assertEqual(6, len(mongo_events))
+
     @mock.patch('issueshark.backends.github.GithubBackend._send_request')
     @mock.patch('issueshark.backends.github.GithubBackend._get_people')
     def test_store_events(self, mock_people, mock_request):
@@ -178,12 +204,6 @@ class GithubBackendTest(unittest.TestCase):
         gh_backend._process_events('6131', Issue.objects(external_id='6131').get())
 
         mongo_issue = Issue.objects(external_id='6131').get()
-
-        # Labels are no longer there as we store the original issue
-        self.assertListEqual([], mongo_issue.labels)
-
-        # Also title is set back
-        self.assertEqual('Inexplainable', mongo_issue.title)
 
         mongo_events = Event.objects.order_by('+created_at', '+external_id')
         self.assertEqual(6, len(mongo_events))
@@ -203,8 +223,8 @@ class GithubBackendTest(unittest.TestCase):
         self.assertEqual(mongo_issue.id, event.issue_id)
         self.assertEqual(ObjectId('5899f79cfc263613115e5ccb'), event.author_id)
         self.assertEqual('labeled', event.status)
-        self.assertListEqual([], event.old_value)
-        self.assertListEqual(['Solver'], event.new_value)
+        self.assertEqual(None, event.old_value)
+        self.assertEqual('Solver', event.new_value)
 
         event = mongo_events[2]
         self.assertEqual(datetime.datetime(2017, 2, 5, 11, 25, 57), event.created_at)
@@ -212,8 +232,8 @@ class GithubBackendTest(unittest.TestCase):
         self.assertEqual(mongo_issue.id, event.issue_id)
         self.assertEqual(ObjectId('5899f79cfc263613115e5ccb'), event.author_id)
         self.assertEqual('labeled', event.status)
-        self.assertListEqual(['Solver'], event.old_value)
-        self.assertListEqual(['Solver', 'Support'], event.new_value)
+        self.assertEqual(None, event.old_value)
+        self.assertEqual('Support', event.new_value)
 
         event = mongo_events[3]
         self.assertEqual(datetime.datetime(2017, 2, 5, 11, 27, 17), event.created_at)
@@ -248,9 +268,6 @@ class GithubBackendTest(unittest.TestCase):
 
         mongo_issue = Issue.objects(external_id='6050').get()
 
-        # Labels are no longer there as we store the original issue
-        self.assertListEqual([], mongo_issue.labels)
-
         mongo_events = Event.objects.order_by('+created_at', '+external_id')
         self.assertEqual(3, len(mongo_events))
 
@@ -274,9 +291,24 @@ class GithubBackendTest(unittest.TestCase):
         self.assertEqual(mongo_issue.id, event.issue_id)
         self.assertEqual(ObjectId('5899f79cfc263613115e5ccb'), event.author_id)
         self.assertEqual('labeled', event.status)
-        self.assertListEqual([], event.old_value)
-        self.assertListEqual(['Support'], event.new_value)
+        self.assertEqual(None, event.old_value)
+        self.assertEqual('Support', event.new_value)
 
+    @mock.patch('issueshark.backends.github.GithubBackend._send_request')
+    @mock.patch('issueshark.backends.github.GithubBackend._get_people')
+    def test_store_comments_two_times(self, mock_people, mock_request):
+        mock_people.return_value = ObjectId('5899f79cfc263613115e5ccb')
+        mock_request.return_value = self.comments_issue_6131
+
+        gh_backend = GithubBackend(self.conf, self.issues_system_id, self.project_id)
+        gh_backend.store_issue(self.issue_6131)
+
+        mongo_issue = Issue.objects(external_id='6131').get()
+        gh_backend._process_comments('6131', mongo_issue)
+        gh_backend._process_comments('6131', mongo_issue)
+
+        mongo_comments = IssueComment.objects.order_by('+created_at', '+external_id')
+        self.assertEqual(3, len(mongo_comments))
 
     @mock.patch('issueshark.backends.github.GithubBackend._send_request')
     @mock.patch('issueshark.backends.github.GithubBackend._get_people')

@@ -1,0 +1,559 @@
+{
+   "expand":"renderedFields,names,schema,transitions,operations,editmeta,changelog",
+   "id":"12655939",
+   "self":"https://issues.apache.org/jira/rest/api/2/issue/12655939",
+   "key":"DRILL-138",
+   "fields":{
+      "issuetype":{
+         "self":"https://issues.apache.org/jira/rest/api/2/issuetype/2",
+         "id":"2",
+         "description":"A new feature of the product, which has yet to be developed.",
+         "iconUrl":"https://issues.apache.org/jira/images/icons/issuetypes/newfeature.png",
+         "name":"New Feature",
+         "subtask":false
+      },
+      "timespent":null,
+      "project":{
+         "self":"https://issues.apache.org/jira/rest/api/2/project/12313820",
+         "id":"12313820",
+         "key":"DRILL",
+         "name":"Apache Drill",
+         "avatarUrls":{
+            "48x48":"https://issues.apache.org/jira/secure/projectavatar?pid=12313820&avatarId=10011",
+            "24x24":"https://issues.apache.org/jira/secure/projectavatar?size=small&pid=12313820&avatarId=10011",
+            "16x16":"https://issues.apache.org/jira/secure/projectavatar?size=xsmall&pid=12313820&avatarId=10011",
+            "32x32":"https://issues.apache.org/jira/secure/projectavatar?size=medium&pid=12313820&avatarId=10011"
+         },
+         "projectCategory":{
+            "self":"https://issues.apache.org/jira/rest/api/2/projectCategory/10024",
+            "id":"10024",
+            "description":"Incubator related projects",
+            "name":"Incubator"
+         }
+      },
+      "fixVersions":[
+         {
+            "self":"https://issues.apache.org/jira/rest/api/2/version/12324669",
+            "id":"12324669",
+            "description":"Milestone 1: Initial functionality",
+            "name":"0.1.0-m1",
+            "archived":false,
+            "released":true,
+            "releaseDate":"2013-09-24"
+         }
+      ],
+      "aggregatetimespent":null,
+      "resolution":{
+         "self":"https://issues.apache.org/jira/rest/api/2/resolution/3",
+         "id":"3",
+         "description":"The problem is a duplicate of an existing issue.",
+         "name":"Duplicate"
+      },
+      "customfield_12312322":null,
+      "customfield_12310220":null,
+      "customfield_12312520":null,
+      "customfield_12312323":null,
+      "customfield_12312521":"2013-07-03 00:16:13.737",
+      "customfield_12310420":"336214",
+      "customfield_12312320":null,
+      "customfield_12310222":"1_*:*_1_*:*_4406570744_*|*_5_*:*_1_*:*_0",
+      "customfield_12312321":null,
+      "customfield_12312120":null,
+      "customfield_12312121":null,
+      "resolutiondate":"2013-08-23T00:19:04.450+0000",
+      "workratio":-1,
+      "customfield_12312328":null,
+      "customfield_12312329":null,
+      "customfield_12312326":null,
+      "customfield_12310300":null,
+      "customfield_12312327":null,
+      "customfield_12312324":null,
+      "customfield_12312325":null,
+      "lastViewed":"2017-02-24T13:45:28.031+0000",
+      "watches":{
+         "self":"https://issues.apache.org/jira/rest/api/2/issue/DRILL-138/watchers",
+         "watchCount":1,
+         "isWatching":false
+      },
+      "created":"2013-07-03T00:16:13.737+0000",
+      "customfield_10022":null,
+      "priority":{
+         "self":"https://issues.apache.org/jira/rest/api/2/priority/3",
+         "iconUrl":"https://issues.apache.org/jira/images/icons/priorities/major.png",
+         "name":"Major",
+         "id":"3"
+      },
+      "labels":[
+         "operator",
+         "optimizer",
+         "physical"
+      ],
+      "customfield_12312333":null,
+      "customfield_12312334":null,
+      "customfield_12310310":"0.0",
+      "customfield_12312331":null,
+      "customfield_12312332":null,
+      "timeestimate":null,
+      "aggregatetimeoriginalestimate":null,
+      "customfield_12312330":null,
+      "customfield_12311120":null,
+      "versions":[
+         {
+            "self":"https://issues.apache.org/jira/rest/api/2/version/12313216",
+            "id":"12313216",
+            "description":"",
+            "name":"3.0.0",
+            "archived":false,
+            "released":true,
+            "releaseDate":"2008-10-27"
+         }
+      ],
+      "issuelinks":[
+         {
+            "id":"12374231",
+            "self":"https://issues.apache.org/jira/rest/api/2/issueLink/12374231",
+            "type":{
+               "id":"12310000",
+               "name":"Duplicate",
+               "inward":"is duplicated by",
+               "outward":"duplicates",
+               "self":"https://issues.apache.org/jira/rest/api/2/issueLinkType/12310000"
+            },
+            "outwardIssue":{
+               "id":"12636812",
+               "key":"DRILL-49",
+               "self":"https://issues.apache.org/jira/rest/api/2/issue/12636812",
+               "fields":{
+                  "summary":"Build rudimentary planner that converts logical plan to physical plan",
+                  "status":{
+                     "self":"https://issues.apache.org/jira/rest/api/2/status/6",
+                     "description":"The issue is considered finished, the resolution is correct. Issues which are not closed can be reopened.",
+                     "iconUrl":"https://issues.apache.org/jira/images/icons/statuses/closed.png",
+                     "name":"Closed",
+                     "id":"6",
+                     "statusCategory":{
+                        "self":"https://issues.apache.org/jira/rest/api/2/statuscategory/3",
+                        "id":3,
+                        "key":"done",
+                        "colorName":"green",
+                        "name":"Complete"
+                     }
+                  },
+                  "priority":{
+                     "self":"https://issues.apache.org/jira/rest/api/2/priority/3",
+                     "iconUrl":"https://issues.apache.org/jira/images/icons/priorities/major.png",
+                     "name":"Major",
+                     "id":"3"
+                  },
+                  "issuetype":{
+                     "self":"https://issues.apache.org/jira/rest/api/2/issuetype/2",
+                     "id":"2",
+                     "description":"A new feature of the product, which has yet to be developed.",
+                     "iconUrl":"https://issues.apache.org/jira/images/icons/issuetypes/newfeature.png",
+                     "name":"New Feature",
+                     "subtask":false
+                  }
+               }
+            }
+         }
+      ],
+      "customfield_12312339":null,
+      "assignee": {
+         "self":"https://issues.apache.org/jira/rest/api/2/user?username=jaltekruse",
+         "name":"jaltekruse",
+         "emailAddress":"altekrusejason at gmail dot com",
+         "avatarUrls":{
+            "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+            "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+            "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+            "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"},
+         "displayName":"Jason Altekruse",
+         "active":true
+      },
+      "customfield_12312337":null,
+      "customfield_12312338":null,
+      "updated":"2013-10-09T18:09:28.672+0000",
+      "customfield_12312335":null,
+      "customfield_12312336":null,
+      "status":{
+         "self":"https://issues.apache.org/jira/rest/api/2/status/6",
+         "description":"The issue is considered finished, the resolution is correct. Issues which are not closed can be reopened.",
+         "iconUrl":"https://issues.apache.org/jira/images/icons/statuses/closed.png",
+         "name":"Closed",
+         "id":"6",
+         "statusCategory":{
+            "self":"https://issues.apache.org/jira/rest/api/2/statuscategory/3",
+            "id":3,
+            "key":"done",
+            "colorName":"green",
+            "name":"Complete"
+         }
+      },
+      "components":[
+         {
+            "self":"https://issues.apache.org/jira/rest/api/2/component/12312381",
+            "id":"12312381",
+            "name":"java client",
+            "description":"The java client interface for ZooKeeper"
+         },
+         {
+            "self":"https://issues.apache.org/jira/rest/api/2/component/12312382",
+            "id":"12312382",
+            "name":"server",
+            "description":"General issues with the ZooKeeper server."
+         },
+         {
+            "self":"https://issues.apache.org/jira/rest/api/2/component/12312427",
+            "id":"12312427",
+            "name":"tests",
+            "description":"For issues with test cases"
+         }
+      ],
+      "timeoriginalestimate": 3600,
+      "description":"As new Physical Operators are completed they must be added to the basic optimizer for logical to physical plan conversion.",
+      "customfield_10010":null,
+      "timetracking":{
+
+      },
+      "customfield_12312026":null,
+      "customfield_12312422":null,
+      "customfield_12312620":[
+
+      ],
+      "customfield_12312023":null,
+      "customfield_12312024":null,
+      "customfield_12312420":null,
+      "customfield_12312340":null,
+      "aggregatetimeestimate":null,
+      "customfield_12312022":null,
+      "customfield_12312341":null,
+      "customfield_12312220":null,
+      "customfield_12310921":null,
+      "customfield_12310920":"336538",
+      "summary":"Fill basic optimizer with new Physical Operators",
+      "creator":{
+         "self":"https://issues.apache.org/jira/rest/api/2/user?username=jaltekruse",
+         "name":"jaltekruse",
+         "emailAddress":"altekrusejason at gmail dot com",
+         "avatarUrls":{
+            "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+            "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+            "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+            "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+         },
+         "displayName":"Jason Altekruse",
+         "active":true
+      },
+      "subtasks":[
+
+      ],
+      "customfield_12310291":null,
+      "reporter":{
+         "self":"https://issues.apache.org/jira/rest/api/2/user?username=jaltekruse",
+         "name":"jaltekruse",
+         "emailAddress":"altekrusejason at gmail dot com",
+         "avatarUrls":{
+            "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+            "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+            "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+            "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+         },
+         "displayName":"Jason Altekruse",
+         "active":true
+      },
+      "customfield_12310290":null,
+      "aggregateprogress":{
+         "progress":0,
+         "total":0
+      },
+      "customfield_12311024":null,
+      "environment":null,
+      "customfield_12311020":null,
+      "duedate":null,
+      "customfield_12310250":null,
+      "progress":{
+         "progress":0,
+         "total":0
+      },
+      "comment":{
+         "startAt":0,
+         "maxResults":0,
+         "total":0,
+         "comments":[
+
+         ]
+      },
+      "votes":{
+         "self":"https://issues.apache.org/jira/rest/api/2/issue/DRILL-138/votes",
+         "votes":0,
+         "hasVoted":false
+      },
+      "worklog":{
+         "startAt":0,
+         "maxResults":20,
+         "total":0,
+         "worklogs":[
+
+         ]
+      },
+      "customfield_12311820":"0|i1lzsv:"
+   },
+   "changelog":{
+      "startAt":0,
+      "maxResults":8,
+      "total":8,
+      "histories":[
+         {
+            "id":"13657322",
+            "author":{
+               "self":"https://issues.apache.org/jira/rest/api/2/user?username=cmerrick",
+               "name":"cmerrick",
+               "emailAddress":"christopherrmerrick at gmail dot com",
+               "avatarUrls":{
+                  "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                  "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                  "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                  "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+               },
+               "displayName":"Christopher Merrick",
+               "active":true
+            },
+            "created":"2014-02-24T17:43:46.087+0000",
+            "items":[
+               {
+                  "field":"Parent",
+                  "fieldtype":"jira",
+                  "from":"123",
+                  "fromString":"ZOOKEEPER-232",
+                  "to":"12524256",
+                  "toString":"ZOOKEEPER-231"
+               },
+               {
+                  "field":"environment",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":"Sparc Solaris 10\r\nJava 6u17 64 bits\r\n5 nodes ensemble",
+                  "to":null,
+                  "toString":"Sparc Solaris 10 and 11\r\nJava 6u17 64 bits\r\n5 nodes ensemble"
+               },
+               {
+                  "field":"Labels",
+                  "fieldtype":"custom",
+                  "from":null,
+                  "fromString":"",
+                  "to":null,
+                  "toString":"zookeeper"
+               },
+               {
+                  "field":"Labels",
+                  "fieldtype":"custom",
+                  "from":null,
+                  "fromString":"zookeeper1",
+                  "to":null,
+                  "toString":""
+               },
+               {
+                  "field":"timeoriginalestimate",
+                  "fieldtype":"jira",
+                  "from":"480",
+                  "fromString":"480",
+                  "to":"28800",
+                  "toString":"28800"
+               },
+               {
+                  "field":"Component",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":null,
+                  "to":"12312380",
+                  "toString":"c client"
+               },
+               {
+                  "field":"Component",
+                  "fieldtype":"jira",
+                  "from":"12312381",
+                  "fromString":"python client",
+                  "to":null,
+                  "toString": null
+               }
+            ]
+         },
+         {
+            "id":"13657311",
+            "author":{
+               "self":"https://issues.apache.org/jira/rest/api/2/user?username=tnachen",
+               "name":"tnachen",
+               "emailAddress":"tnachen at gmail dot com",
+               "avatarUrls":{
+                  "48x48":"https://issues.apache.org/jira/secure/useravatar?ownerId=tnachen&avatarId=20385",
+                  "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&ownerId=tnachen&avatarId=20385",
+                  "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&ownerId=tnachen&avatarId=20385",
+                  "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&ownerId=tnachen&avatarId=20385"
+               },
+               "displayName":"Timothy Chen",
+               "active":true
+            },
+            "created":"2015-02-24T17:00:58.268+0000",
+            "items":[
+               {
+                  "field":"Link",
+                  "fieldtype":"jira",
+                  "from": "ZOOKEEPER-231",
+                  "fromString":"This issue relates to ZOOKEEPER-231",
+                  "to":null,
+                  "toString": null
+               },
+               {
+                  "field":"assignee",
+                  "fieldtype":"jira",
+                  "from":"breed",
+                  "fromString":"Benjamin Reed",
+                  "to":"phunt",
+                  "toString":"Patrick Hunt"
+               },
+               {
+                  "field":"Fix Version",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":null,
+                  "to":"12326518",
+                  "toString":"3.6.0"
+               },
+               {
+                  "field":"Fix Version",
+                  "fieldtype":"jira",
+                  "from":"12326519",
+                  "fromString":"3.5.0",
+                  "to":null,
+                  "toString": null
+               },
+               {
+                  "field":"priority",
+                  "fieldtype":"jira",
+                  "from":"3",
+                  "fromString":"Major",
+                  "to":"1",
+                  "toString":"Blocker"
+               },
+               {
+                  "field":"issuetype",
+                  "fieldtype":"jira",
+                  "from":"2",
+                  "fromString":"New Feature",
+                  "to":"4",
+                  "toString":"Improvement"
+               },
+               {
+                  "field":"Version",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":null,
+                  "to":"12313216",
+                  "toString":"3.0.0"
+               },
+               {
+                  "field":"Version",
+                  "fieldtype":"jira",
+                  "from":"12313217",
+                  "fromString":"3.0.1",
+                  "to":null,
+                  "toString": null
+               },
+               {
+                  "field":"summary",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":"Dump of ZooKeeper SVN repository",
+                  "to":null,
+                  "toString":"Initial ZooKeeper code contribution from Yahoo!"
+               },
+               {
+                  "field":"description",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":"There are a couple of cases of member variables that need to be marked volatile or surrounded in a synchronization block. A couple of examples are:\n\n* QuorumPeer state should be synchronous\n* currentVote in QuorumPeer is marked volatile, but when it's members are often accessed individually as if they were in an atomic unit. Such code should be changed to get a reference to the currentVote and they access members through that reference.\n",
+                  "to":null,
+                  "toString":"There are a couple of cases of member variables that need to be marked volatile or surrounded in a synchronization block. A couple of examples are:\n\n* QuorumPeer state should be synchronous\n* currentVote in QuorumPeer is marked volatile, but when it's members are often accessed individually as if they were in an atomic unit. Such code should be changed to get a reference to the currentVote and they access members through that reference.\n* It looks like logicalClock in FastLeaderElection should be volatile. It should either be fixed or commented to explain why it doesn't need to be."
+               },
+               {
+                  "field":"labels",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":"newbie",
+                  "to":null,
+                  "toString":"docuentation newbie"
+               }
+            ]
+         },
+         {
+            "id":"13829150",
+            "author":{
+               "self":"https://issues.apache.org/jira/rest/api/2/user?username=jnadeau",
+               "name":"jnadeau",
+               "emailAddress":"jacques at apache dot org",
+               "avatarUrls":{
+                  "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+                  "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+                  "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+                  "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+               },
+               "displayName":"Jacques Nadeau",
+               "active":true
+            },
+            "created":"2016-08-13T17:29:13.718+0000",
+            "items":[
+               {
+                  "field":"Target Version/s",
+                  "fieldtype":"custom",
+                  "from":null,
+                  "fromString":null,
+                  "to":"[12324669]",
+                  "toString":"0.1"
+               },
+               {
+                  "field":"status",
+                  "fieldtype":"jira",
+                  "from":"4",
+                  "fromString":"Reopened",
+                  "to":"5",
+                  "toString":"Resolved"
+               },
+               {
+                  "field":"resolution",
+                  "fieldtype":"jira",
+                  "from":"20000",
+                  "fromString": "Test",
+                  "to":"1",
+                  "toString":"Fixed"
+               },
+               {
+                  "field":"Attachment",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":null,
+                  "to":"12389576",
+                  "toString":"testfails_ZOOKEEPER-136.patch"
+               },
+               {
+                  "field":"Attachment",
+                  "fieldtype":"jira",
+                  "from":"12389577",
+                  "fromString":"testfails_ZOOKEEPER-137.patch",
+                  "to": null,
+                  "toString": null
+               },
+               {
+                  "field":"Link",
+                  "fieldtype":"jira",
+                  "from":null,
+                  "fromString":null,
+                  "to":"ZOOKEEPER-232",
+                  "toString":"This issue relates to ZOOKEEPER-232"
+               }
+            ]
+         }
+
+
+      ]
+   }
+}

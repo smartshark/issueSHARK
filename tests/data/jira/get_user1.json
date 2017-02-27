@@ -1,0 +1,22 @@
+{
+   "self":"https://issues.apache.org/jira/rest/api/2/user?username=breed",
+   "key":"breed",
+   "name":"breed",
+   "emailAddress":"breed at apache dot org",
+   "avatarUrls":{
+      "48x48":"https://issues.apache.org/jira/secure/useravatar?avatarId=10452",
+      "24x24":"https://issues.apache.org/jira/secure/useravatar?size=small&avatarId=10452",
+      "16x16":"https://issues.apache.org/jira/secure/useravatar?size=xsmall&avatarId=10452",
+      "32x32":"https://issues.apache.org/jira/secure/useravatar?size=medium&avatarId=10452"
+   },
+   "displayName":"Benjamin Reed",
+   "active":true,
+   "timeZone":"America/Los_Angeles",
+   "groups":{
+      "size":1,
+      "items":[
+
+      ]
+   },
+   "expand":"groups"
+}

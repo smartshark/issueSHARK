@@ -23,7 +23,7 @@ class BugzillaBackend(BaseBackend):
         """
         Identifier (bugzilla)
         """
-        return 'bugzilla'
+        return 'bugzillaOld'
 
     def __init__(self, cfg, issue_system_id, project_id):
         """
@@ -114,8 +114,8 @@ class BugzillaBackend(BaseBackend):
         3. Transforms the issue to our issue model. \
         See: :func:`issueshark.backends.bugzilla.BugzillaBackend._transform_issue`
 
-        4. Go through the history of the issue (newest to oldes) and store the events. \
-        See: :func:`issueshark.backends.bugzilla.BugzillaBackend._process_event`
+        4. Go through the history of the issue (newest to oldes) and set back the issue step by step. During this \
+        processing: Store the events. See: :func:`issueshark.backends.bugzilla.BugzillaBackend._process_event`
 
         5. Process all comments. See: :func:`issueshark.backends.bugzilla.BugzillaBackend._process_comments`
 
@@ -128,22 +128,18 @@ class BugzillaBackend(BaseBackend):
 
         logger.debug('Transformed issue: %s', mongo_issue)
 
-        self._store_events(histories, issue, mongo_issue)
-
-        # Store comments
-        self._process_comments(mongo_issue.id, comments)
-
-    def _store_events(self, histories, issue, mongo_issue):
-        # Store events
+        # Go through history
+        # 1) Set back issue
+        # 2) Store events
         j = 0
         events_to_insert = []
-        for history in histories:
+        for history in reversed(histories):
             i = 0
             change_date = dateutil.parser.parse(history['when'])
             author_id = self._get_people(history['who'])
             for bz_event in history['changes']:
                 logger.debug("Processing event: %s" % bz_event)
-                unique_event_id = str(issue['id']) + "%%" + str(i) + "%%" + str(j)
+                unique_event_id = str(issue['id'])+"%%"+str(i)+"%%"+str(j)
                 mongo_event, is_new_event = self._process_event(unique_event_id, bz_event, mongo_issue, change_date,
                                                                 author_id)
                 logger.debug('Newly created?: %s, Resulting event: %s' % (is_new_event, mongo_event))
@@ -155,15 +151,21 @@ class BugzillaBackend(BaseBackend):
                 i += 1
             j += 1
 
+        # Update issue to the original version
+        mongo_issue.save()
+
         # Store events
         if events_to_insert:
             Event.objects.insert(events_to_insert, load_bulk=False)
+
+        # Store comments
+        self._process_comments(mongo_issue.id, comments)
 
     def _process_comments(self, mongo_issue_id, comments):
         """
         Processes the comments for an issue
 
-        :param mongo_issue_id: Object of class :class:`bson.objectid.ObjectId`. Identifier of the document that holds \
+        :param mongo_issue_id: Object of class :class:`bson.objectid.ObjectId`. Identifier of the document that holds
         the issue information
         :param comments: comments that were received from the bugzilla API
         """
@@ -208,9 +210,10 @@ class BugzillaBackend(BaseBackend):
         :param change_date: date when the event was created
         :param author_id: :class:`bson.objectid.ObjectId` of the author of the event
         """
+        is_new_event = True
         try:
             mongo_event = Event.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
-            return mongo_event, False
+            is_new_event = False
         except DoesNotExist:
             mongo_event = Event(
                 external_id=unique_event_id,
@@ -232,39 +235,145 @@ class BugzillaBackend(BaseBackend):
             logger.warning('Mapping for attribute %s not found.' % bz_at_name)
             mongo_event.status = bz_at_name
 
-
-        if mongo_event.status == 'assignee_id':
-            if bz_event['added'] is not None and bz_event['added']:
-                people_id = self._get_people(bz_event['added'])
-                mongo_event.new_value = people_id
-
-            if bz_event['removed'] is not None and bz_event['removed']:
-                people_id = self._get_people(bz_event['removed'])
-                mongo_event.old_value = people_id
-        elif bz_event['field_name'] == 'depends_on':
-            if bz_event['added'] is not None and bz_event['added']:
-                issue_id = self._get_issue_id_by_system_id(bz_event['added'])
-                mongo_event.new_value = {'issue_id': issue_id, 'type': 'Dependent', 'effect': 'depends on'}
-
-            if bz_event['removed'] is not None and bz_event['removed']:
-                issue_id = self._get_issue_id_by_system_id(bz_event['removed'])
-                mongo_event.old_value = {'issue_id': issue_id, 'type': 'Dependent', 'effect': 'depends on'}
-        elif bz_event['field_name'] == 'blocks':
-            if bz_event['added'] is not None and bz_event['added']:
-                issue_id = self._get_issue_id_by_system_id(bz_event['added'])
-                mongo_event.new_value = {'issue_id': issue_id, 'type': 'Blocker', 'effect': 'blocks'}
-
-            if bz_event['removed'] is not None and bz_event['removed']:
-                issue_id = self._get_issue_id_by_system_id(bz_event['removed'])
-                mongo_event.old_value = {'issue_id': issue_id, 'type': 'Blocker', 'effect': 'blocks'}
+        # Check if the mongo_issue has the attribute.
+        # If yes: We can use the mongo_issue to set the old and new value of the event
+        # If no: We use the added / removed fields
+        if hasattr(mongo_issue, mongo_event.status):
+            mongo_event.new_value = copy.deepcopy(getattr(mongo_issue, mongo_event.status))
+            self._set_back_mongo_issue(mongo_issue, mongo_event.status, bz_event)
+            mongo_event.old_value = copy.deepcopy(getattr(mongo_issue, mongo_event.status))
         else:
-            if bz_event['added'] is not None and bz_event['added']:
-                mongo_event.new_value = bz_event['added']
+            mongo_event.new_value = bz_event['added']
+            mongo_event.old_value = bz_event['removed']
 
-            if bz_event['removed'] is not None and bz_event['removed']:
-                mongo_event.old_value = bz_event['removed']
+        return mongo_event, is_new_event
 
-        return mongo_event, True
+    def _set_back_mongo_issue(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Method to set back the issue stored in the mongodb
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
+        function_mapping = {
+            'title': self._set_back_string_field,
+            'priority': self._set_back_priority,
+            'status': self._set_back_string_field,
+            'affects_versions': self._set_back_array_field,
+            'components': self._set_back_array_field,
+            'labels': self._set_back_array_field,
+            'resolution': self._set_back_string_field,
+            'fix_versions': self._set_back_array_field,
+            'assignee_id': self._set_back_assignee,
+            'issue_links': self._set_back_issue_links,
+            'environment': self._set_back_string_field,
+            'platform': self._set_back_string_field
+        }
+
+        correct_function = function_mapping[mongo_at_name]
+        correct_function(mongo_issue, mongo_at_name, bz_event)
+
+    def _set_back_priority(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Sets back the priority of the issue before the event
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
+        if bz_event['removed'] == 'enhancement':
+            mongo_issue.issue_type = 'Enhancement'
+        else:
+            mongo_issue.issue_type = 'Bug'
+
+        mongo_issue.priority = bz_event['removed']
+
+    def _set_back_issue_links(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Sets back the link to the issue before the event
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
+        type_mapping = {
+            'blocks': 'Blocker',
+            'dupe_of': 'Duplicate',
+            'depends_on': 'Dependent',
+        }
+
+        item_list = getattr(mongo_issue, mongo_at_name)
+
+        # Everything that is in "removed" must be added
+        if bz_event['removed']:
+            issue_id = self._get_issue_id_by_system_id(bz_event['removed'])
+            if issue_id not in [entry['issue_id'] for entry in item_list]:
+                item_list.append({'issue_id': issue_id, 'type': type_mapping[bz_event['field_name']],
+                                  'effect': bz_event['field_name']})
+
+        # Everything that is in "added" must be removed
+        if bz_event['added']:
+            issue_id = self._get_issue_id_by_system_id(bz_event['added'])
+            found_index = 0
+            for stored_issue in item_list:
+                if stored_issue['issue_id'] == issue_id:
+                    break
+                found_index += 1
+            try:
+                del item_list[found_index]
+            except IndexError:
+                logger.warning('Could not process event %s completely. Did not found issue to delete Issue %s' %
+                               (bz_event, mongo_issue))
+
+        setattr(mongo_issue, mongo_at_name, item_list)
+
+    def _set_back_assignee(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Sets back the assignee of the issue before the event
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
+        if bz_event['removed']:
+            setattr(mongo_issue, mongo_at_name, self._get_people(bz_event['removed']))
+        else:
+            setattr(mongo_issue, mongo_at_name, None)
+
+    def _set_back_string_field(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Sets back normal string fields, e.g., title, of the issue before the event
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
+        setattr(mongo_issue, mongo_at_name, bz_event['removed'])
+
+    def _set_back_array_field(self, mongo_issue, mongo_at_name, bz_event):
+        """
+        Sets back array fields, e.g., components, of the issue before the event
+
+        :param mongo_issue: issue stored in the mongodb
+        :param mongo_at_name: attribute name of the field of the issue document
+        :param bz_event: event from the bugzilla api
+        """
+        item_list = getattr(mongo_issue, mongo_at_name)
+        # Everything that is in "added" must be removed
+        if bz_event['added']:
+            # We try to remove the item. If it is not in there, we remove the whole list. Observations showed,
+            # that this is most likely the correct decision
+            try:
+                item_list.remove(bz_event['added'])
+            except ValueError:
+                item_list.clear()
+
+        # Everything that is in "removed" must be added
+        if bz_event['removed'] and bz_event['removed'] not in item_list:
+            item_list.append(bz_event['removed'])
+
+        setattr(mongo_issue, mongo_at_name, item_list)
 
     def _parse_bz_field(self, bz_issue, at_name_bz):
         """
@@ -340,26 +449,20 @@ class BugzillaBackend(BaseBackend):
             'depends_on': 'Dependent',
         }
 
-        effect_mapping = {
-            'blocks': 'blocks',
-            'dupe_of': 'duplicates',
-            'depends_on': 'depends on'
-        }
-
         issue_links = []
         if isinstance(bz_issue[at_name_bz], list):
             for link in bz_issue[at_name_bz]:
                 issue_links.append({
                     'issue_id': self._get_issue_id_by_system_id(link),
                     'type': type_mapping[at_name_bz],
-                    'effect': effect_mapping[at_name_bz]
+                    'effect': at_name_bz
                 })
         else:
             if bz_issue[at_name_bz] is not None:
                 issue_links.append({
                     'issue_id': self._get_issue_id_by_system_id(bz_issue[at_name_bz]),
                     'type': type_mapping[at_name_bz],
-                    'effect': effect_mapping[at_name_bz]
+                    'effect': at_name_bz
                 })
 
         return issue_links
@@ -416,10 +519,6 @@ class BugzillaBackend(BaseBackend):
             if comment['count'] == 0:
                 mongo_issue.desc = comment['text']
                 break
-
-        # If we have a creator, its also the repoerter in bugzilla terminology
-        if bz_issue['creator_detail'] is not None:
-            mongo_issue.reporter_id = mongo_issue.creator_id
 
         # Bugzilla does not have a separate field for the type. Therefore, we distinguish between bug an enhancement
         # based on the severity information
