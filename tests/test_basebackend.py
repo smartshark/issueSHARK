@@ -39,7 +39,6 @@ class BaseBackendTest(unittest.TestCase):
         self.assertIn('github', all_options)
         self.assertIn('jira', all_options)
         self.assertIn('bugzilla', all_options)
-        self.assertEqual(3, len(all_options))
 
     def test_find_fitting_backend_github(self):
         config = ConfigMock(None, None, None, None, None, None, None, None, 'github', None, None, None, None, None,
