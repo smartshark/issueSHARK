@@ -8,6 +8,7 @@ import argparse
 from issueshark.backends.basebackend import BaseBackend
 from issueshark.config import Config, ConfigValidationException
 from issueshark.issueshark import IssueSHARK
+from pycoshark.utils import get_base_argparser
 
 
 def setup_logging(default_path=os.path.dirname(os.path.realpath(__file__))+"/loggerConfiguration.json",
@@ -44,14 +45,7 @@ def start():
 
     logger.debug("Found the following backends: %s" % ', '.join(backend_choices))
 
-    parser = argparse.ArgumentParser(description='Collects information from different issue tracking systems.')
-    parser.add_argument('-U', '--db-user', help='Database user name', default=None)
-    parser.add_argument('-P', '--db-password', help='Database user password', default=None)
-    parser.add_argument('-DB', '--db-database', help='Database name', default='smartshark')
-    parser.add_argument('-H', '--db-hostname', help='Name of the host, where the database server is running',
-                        default='localhost')
-    parser.add_argument('-p', '--db-port', help='Port, where the database server is listening', default=27017, type=int)
-    parser.add_argument('-a', '--db-authentication', help='Name of the authentication database')
+    parser = get_base_argparser('Collects information from different issue tracking systems.', '1.0.0')
     parser.add_argument('-n', '--project-name', help='Name of the project to analyze.', required=True)
     parser.add_argument('-i', '--issueurl', help='URL to the bugtracking system.', required=True)
     parser.add_argument('-b', '--backend', help='Backend to use for the issue parsing', default='github',

@@ -7,6 +7,7 @@ import datetime
 from mongoengine import connect, DoesNotExist
 from issueshark.backends.basebackend import BaseBackend
 from pycoshark.mongomodels import Project, IssueSystem
+from pycoshark.utils import create_mongodb_uri_string
 
 logger = logging.getLogger("main")
 
@@ -39,8 +40,9 @@ class IssueSHARK(object):
         start_time = timeit.default_timer()
 
         # Connect to mongodb
-        connect(cfg.database, username=cfg.user, password=cfg.password, host=cfg.host, port=cfg.port,
-                authentication_source=cfg.authentication_db)
+        uri = create_mongodb_uri_string(cfg.user, cfg.password, cfg.host, cfg.port, cfg.authentication_db,
+                                        cfg.ssl_enabled)
+        connect(cfg.database, host=uri)
 
         # Get the project for which issue data is collected
         try:

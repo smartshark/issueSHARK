@@ -52,4 +52,8 @@ if [ ! -z ${18} ] && [ ${18} != "None" ]; then
     COMMAND="$COMMAND --issue-password ${18}"
 fi
 
+if [ ! -z ${19} ] && [ ${19} != "None" ]; then
+    COMMAND="$COMMAND --ssl"
+fi
+
 $COMMAND

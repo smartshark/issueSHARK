@@ -155,6 +155,10 @@ you can add them by:
 
 	name of the authentication database
 
+.. option:: --ssl
+
+	enables ssl for the connection to the mongodb
+
 .. option:: --debug <DEBUG_LEVEL>, -d <DEBUG_LEVEL>
 
 	Default: DEBUG

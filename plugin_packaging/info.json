@@ -13,22 +13,22 @@
         {
 			"name": "issue",
 			"shard_key": [{"external_id": 1}, {"issue_system_id": 1}],
-			"unique": true
+            "unique": true
 		},
         {
 			"name": "event",
 			"shard_key": [{"external_id": 1}, {"issue_id": 1}],
-			"unique": true
+            "unique": true
 		},
         {
 			"name": "issue_comment",
 			"shard_key": [{"external_id": 1}, {"issue_id": 1}],
-			"unique": true
+            "unique": true
 		},
         {
 			"name": "people",
 			"shard_key": [{"email": 1}, {"name": 1}],
-			"unique": true
+            "unique": true
 		}
 	],
     "description": "Plugin to collect data from issue tracking systems.",
@@ -166,6 +166,13 @@
             "position": 18,
             "type": "execute",
             "description": "password to use the issue system"
+        },
+        {
+            "name": "ssl_enabled",
+            "required": false,
+            "position": 19,
+            "type": "execute",
+            "description": "needs to be set if database uses ssl connection"
         }
     ]
 }

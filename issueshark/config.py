@@ -40,7 +40,7 @@ class Config(object):
         self.proxy_port = args.proxy_port
         self.proxy_username = args.proxy_user
         self.proxy_password = args.proxy_password
-
+        self.ssl_enabled = args.ssl
         self._validate_config()
 
     def _validate_config(self):
