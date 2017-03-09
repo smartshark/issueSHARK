@@ -595,8 +595,12 @@ class JiraBackend(BaseBackend):
                 issue_id = self._get_issue_id_by_system_id(jira_event.to)
                 mongo_event.new_value = {'issue_id': issue_id, 'type': issue_type, 'effect': issue_effect}
         elif mongo_event.status == 'original_time_estimate':
-            mongo_event.new_value = int(jira_event.toString)
-            mongo_event.old_value = int(jira_event.fromString)
+            if getattr(jira_event, 'from') is not None:
+                mongo_event.old_value = int(jira_event.fromString)
+
+            if jira_event.to is not None:
+                mongo_event.new_value = int(jira_event.toString)
+
         else:
             mongo_event.new_value = getattr(jira_event, 'toString')
             mongo_event.old_value = getattr(jira_event, 'fromString')
@@ -619,8 +623,14 @@ class JiraBackend(BaseBackend):
         # If email and name are not set, make a request to get the user
         if email is None and name is None:
             user = self._get_user(username)
-            email = user.emailAddress
-            name = user.displayName
+
+            # It can happen that a user is no longer available
+            if user is None:
+                email = username
+                name = username
+            else:
+                email = user.emailAddress
+                name = user.displayName
 
         # Replace the email address "anonymization"
         email = email.replace(' at ', '@').replace(' dot ', '.')
@@ -638,4 +648,8 @@ class JiraBackend(BaseBackend):
         if username is None:
             return None
 
-        return self.jira_client.find('user?username={0}', username)
+        # It can happen that a user is no longer available
+        try:
+            return self.jira_client.find('user?username={0}', username)
+        except JIRAError:
+            return None
