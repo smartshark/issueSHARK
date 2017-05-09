@@ -19,25 +19,20 @@ if [ ! -z ${7} ] && [ ${7} != "None" ]; then
 	COMMAND="$COMMAND --db-authentication ${7}"
 fi
 
-
 if [ ! -z ${12} ] && [ ${12} != "None" ]; then
-	if [ ! -z ${13} ] && [ ${13} != "None" ]; then
-		COMMAND="$COMMAND --proxy-host ${12} --proxy-port ${13}"
-		echo "$COMMAND"
+    COMMAND="$COMMAND --proxy-host ${12}"
+fi
 
-		if [ ! -z ${14} ] && [ ${14} != "None" ]; then
-			if [ ! -z ${15} ] && [ ${15} != "None" ]; then
-				COMMAND="$COMMAND --proxy-user ${14} --proxy-password ${15}"
-				echo "$COMMAND"
-			else
-				echo "If proxy user is set, proxy password must also be set."
-				return 1
-			fi
-		fi
-	else
-		echo "If proxy host is set, port must also be set."
-		return 1
-	fi
+if [ ! -z ${13} ] && [ ${13} != "None" ]; then
+	COMMAND="$COMMAND --proxy-port ${13}"
+fi
+
+if [ ! -z ${14} ] && [ ${14} != "None" ]; then
+    COMMAND="$COMMAND --proxy-user ${14}"
+fi
+
+if [ ! -z ${15} ] && [ ${15} != "None" ]; then
+	COMMAND="$COMMAND --proxy-password ${15}"
 fi
 
 if [ ! -z ${16} ] && [ ${16} != "None" ]; then
@@ -56,4 +51,4 @@ if [ ! -z ${19} ] && [ ${19} != "None" ]; then
     COMMAND="$COMMAND --ssl"
 fi
 
-$COMMAND
+echo $COMMAND
