@@ -1,7 +1,7 @@
 #!/bin/sh
 PLUGIN_PATH=$1
 
-COMMAND="python3.5 $1/main.py --db-database '$4' --db-hostname '$5' --db-port $6 --project-name '$8' --issueurl $9 --backend ${10}"
+COMMAND="python3.5 $1/main.py --db-database '$4' --db-hostname '$5' --db-port $6 --project-name '$8' --issueurl '$9' --backend ${10}"
 
 if [ ! -z ${11} ] && [ ${11} != "None" ]; then
 	COMMAND="$COMMAND --token '${11}'"
@@ -36,7 +36,7 @@ if [ ! -z ${15} ] && [ ${15} != "None" ]; then
 fi
 
 if [ ! -z ${16} ] && [ ${16} != "None" ]; then
-    COMMAND="$COMMAND --debug '${16}'"
+    COMMAND="$COMMAND --debug ${16}"
 fi
 
 if [ ! -z ${17} ] && [ ${17} != "None" ]; then
