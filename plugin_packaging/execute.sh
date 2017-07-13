@@ -51,4 +51,4 @@ if [ ! -z ${19} ] && [ ${19} != "None" ]; then
     COMMAND="$COMMAND --ssl"
 fi
 
-echo $COMMAND
+$COMMAND
