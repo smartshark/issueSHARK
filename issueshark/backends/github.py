@@ -338,7 +338,7 @@ class GithubBackend(BaseBackend):
             logger.info("Github API limit exceeded. Waiting for %0.5f seconds..." % waiting_time)
             time.sleep(waiting_time)
 
-            resp = requests.get(url)
+            resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
 
         logger.debug('Got response: %s' % resp.json())
 
