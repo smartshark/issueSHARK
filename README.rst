@@ -81,7 +81,7 @@ The tests of **issueSHARK** can be executed by calling
 
 	.. code-block:: bash
 
-		$ python3.5 ~/vcsSHARK/setup.py test
+		$ python3.5 ~/issueSHARK/setup.py test
 
 The tests can be found in the folder "tests".
 
