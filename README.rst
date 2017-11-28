@@ -2,8 +2,8 @@
 issueSHARK
 ==========
 
-.. image:: https://travis-ci.org/smartshark/pycoSHARK.svg?branch=master
-    :target: https://travis-ci.org/smartshark/pycoSHARK
+.. image:: https://travis-ci.org/smartshark/issueSHARK.svg?branch=master
+    :target: https://travis-ci.org/smartshark/issueSHARK
 
 ============
 Introduction
