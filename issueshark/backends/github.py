@@ -326,7 +326,7 @@ class GithubBackend(BaseBackend):
             logger.error("Problem with getting data from github via url %s. Error: %s" % (url, resp.json()['message']))
 
         # It can happen that we exceed the github api limit. If we have only 1 request left we will wait
-        if int(resp.headers['X-RateLimit-Remaining']) <= 1:
+        if 'X-RateLimit-Remaining' in resp.headers and int(resp.headers['X-RateLimit-Remaining']) <= 1:
 
             # We get the reset time (UTC Epoch seconds)
             time_when_reset = datetime.datetime.fromtimestamp(float(resp.headers['X-RateLimit-Reset']))
