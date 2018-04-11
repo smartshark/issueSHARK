@@ -166,8 +166,9 @@ class GithubBackend(BaseBackend):
                 try:
                     vcs_system_ids = [system.id for system in
                                       VCSSystem.objects(project_id=self.project_id).only('id').all()]
-                    event.new_value = Commit.objects(vcs_system_id__in=vcs_system_ids,
-                                                     revision_hash=raw_event['commit_id']).only('id').get().id
+
+                    event.commit_id = Commit.objects(vcs_system_id__in=vcs_system_ids,
+                                                 revision_hash=raw_event['commit_id']).only('id').get().id
                 except DoesNotExist:
                     pass
 
