@@ -5,6 +5,7 @@ import datetime
 import copy
 
 from mongoengine import DoesNotExist
+from requests import RequestException
 from requests.auth import HTTPBasicAuth
 
 from issueshark.backends.basebackend import BaseBackend
@@ -309,8 +310,6 @@ class GithubBackend(BaseBackend):
 
         :param url: url to which the request should be sent
         """
-        logger.debug("Sending request to url: %s" % url)
-
         auth = None
         headers = None
 
@@ -321,27 +320,34 @@ class GithubBackend(BaseBackend):
             auth = HTTPBasicAuth(self.config.issue_user, self.config.issue_password)
 
         # Make the request
-        resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
-
-        if resp.status_code != 200:
-            logger.error("Problem with getting data from github via url %s. Error: %s" % (url, resp.json()['message']))
-
-        # It can happen that we exceed the github api limit. If we have only 1 request left we will wait
-        if 'X-RateLimit-Remaining' in resp.headers and int(resp.headers['X-RateLimit-Remaining']) <= 1:
-
-            # We get the reset time (UTC Epoch seconds)
-            time_when_reset = datetime.datetime.fromtimestamp(float(resp.headers['X-RateLimit-Reset']))
-            now = datetime.datetime.now()
-
-            # Then we substract and add 10 seconds to it (so that we do not request directly at the threshold
-            waiting_time = ((time_when_reset-now).total_seconds())+10
-
-            logger.info("Github API limit exceeded. Waiting for %0.5f seconds..." % waiting_time)
-            time.sleep(waiting_time)
-
+        tries = 1
+        while tries <= 3:
+            logger.debug("Sending request to url: %s (Try: %s)" % (url, tries))
             resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
 
-        logger.debug('Got response: %s' % resp.json())
+            if resp.status_code != 200:
+                logger.error("Problem with getting data via url %s. Error: %s" % (url, resp.text))
+                tries += 1
+                time.sleep(2)
+            else:
+                # It can happen that we exceed the github api limit. If we have only 1 request left we will wait
+                if 'X-RateLimit-Remaining' in resp.headers and int(resp.headers['X-RateLimit-Remaining']) <= 1:
 
-        return resp.json()
+                    # We get the reset time (UTC Epoch seconds)
+                    time_when_reset = datetime.datetime.fromtimestamp(float(resp.headers['X-RateLimit-Reset']))
+                    now = datetime.datetime.now()
+
+                    # Then we substract and add 10 seconds to it (so that we do not request directly at the threshold
+                    waiting_time = ((time_when_reset-now).total_seconds())+10
+
+                    logger.info("Github API limit exceeded. Waiting for %0.5f seconds..." % waiting_time)
+                    time.sleep(waiting_time)
+
+                    resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
+
+                logger.debug('Got response: %s' % resp.json())
+
+                return resp.json()
+
+        raise RequestException("Problem with getting data via url %s." % url)
 
