@@ -244,7 +244,7 @@ class JiraBackend(BaseBackend):
                     external_id=comment.id,
                     issue_id=mongo_issue_id,
                     created_at=created_at,
-                    author_id=self._get_people(comment.author.name, comment.author.emailAddress,
+                    author_id=self._get_people(comment.author.name, self._get_user_email(comment.author),
                                                comment.author.displayName),
                     comment=comment.body,
                 )
@@ -367,7 +367,7 @@ class JiraBackend(BaseBackend):
         """
         people = getattr(jira_issue_fields, at_name_jira)
         if people is not None:
-            return self._get_people(people.name, people.emailAddress, people.displayName)
+            return self._get_people(people.name, self._get_user_email(people), people.displayName)
         return None
 
     def _parse_array_field(self, jira_issue_fields, at_name_jira):
@@ -512,7 +512,7 @@ class JiraBackend(BaseBackend):
             author_id = None
             if hasattr(history, 'author'):
                 author_id = self._get_people(history.author.name, name=history.author.displayName,
-                                             email=history.author.emailAddress)
+                                             email=self._get_user_email(history.author))
 
             for jira_event in history.items:
                 logger.debug('Processing changelog entry: %s' % vars(jira_event))
@@ -653,3 +653,18 @@ class JiraBackend(BaseBackend):
             return self.jira_client.find('user?username={0}', username)
         except JIRAError:
             return None
+
+    def _get_user_email(self, user):
+        """
+        Return user email address.
+
+        Check for existence of emailAddress attribute, it can be hidden in Jira.
+        If it exists return it if not return 'null' (because that is the current convention in the MongoDB).
+
+        :param user: jira user object
+        :returns: str -- users email or 'null'
+        """
+        email = 'null'
+        if hasattr(user, 'emailAddress'):
+            email = user.emailAddress
+        return email
