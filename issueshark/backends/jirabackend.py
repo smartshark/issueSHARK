@@ -274,9 +274,24 @@ class JiraBackend(BaseBackend):
         for at_name_jira, at_name_mongo in self.jira_mongo_terminology_mapping.items():
             # If the attribute is in the rest response set it
             if hasattr(jira_issue.fields, at_name_jira):
+
+                jira_issue_fields = copy.deepcopy(jira_issue.fields)
+
+                # special case issuelinks: PIG-1904 links to itself, we can not allow this or it creates the issue without data and throws an Exist error on mongo_issue.save()
+                if at_name_jira == 'issuelinks':
+                    new_issue_links = []
+                    for issue_link in getattr(jira_issue.fields, at_name_jira):
+                        if hasattr(issue_link, 'outwardIssue'):
+                            if issue_link.outwardIssue.key != jira_issue.key:
+                                new_issue_links.append(issue_link)
+                        else:
+                            if issue_link.inwardIssue.key != jira_issue.key:
+                                new_issue_links.append(issue_link)
+                    setattr(jira_issue_fields, 'issuelinks', new_issue_links)
+
                 if isinstance(getattr(mongo_issue, at_name_mongo), list):
                     # Get the result and the current value and merge it together
-                    result = self._parse_jira_field(jira_issue.fields, at_name_jira)
+                    result = self._parse_jira_field(jira_issue_fields, at_name_jira)
                     current_value = getattr(mongo_issue, at_name_mongo, list())
                     if not isinstance(result, list):
                         result = [result]
@@ -291,7 +306,7 @@ class JiraBackend(BaseBackend):
                     # Set the attribute
                     setattr(mongo_issue, at_name_mongo, copy.deepcopy(current_value))
                 else:
-                    setattr(mongo_issue, at_name_mongo, self._parse_jira_field(jira_issue.fields, at_name_jira))
+                    setattr(mongo_issue, at_name_mongo, self._parse_jira_field(jira_issue_fields, at_name_jira))
 
         return mongo_issue.save()
 
@@ -629,7 +644,7 @@ class JiraBackend(BaseBackend):
                 email = username
                 name = username
             else:
-                email = user.emailAddress
+                email = self._get_user_email(user)
                 name = user.displayName
 
         # Replace the email address "anonymization"
