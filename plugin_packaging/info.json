@@ -147,7 +147,7 @@
             "description": "password of the proxy"
         },
         {
-            "name": "debug",
+            "name": "log_level",
             "required": false,
             "position": 16,
             "type": "execute",
