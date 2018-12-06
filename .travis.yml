@@ -10,6 +10,8 @@ before_install:
   - sudo pip3 install Sphinx
   - sudo pip3 install sphinx_rtd_theme
   - sudo pip3 install ghp_import
+  - sudo pip3 uninstall idna
+  - sudo pip3 install idna==2.7
 
 script:
   - sudo python3 setup.py install
