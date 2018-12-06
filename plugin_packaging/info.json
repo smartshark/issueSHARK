@@ -1,7 +1,7 @@
 {
     "name": "issueSHARK",
     "author": "Fabian Trautsch",
-    "version": "1.02",
+    "version": "2.0.1",
     "plugin_type": "other",
     "linux_libraries": [
     ],
@@ -147,7 +147,7 @@
             "description": "password of the proxy"
         },
         {
-            "name": "debug",
+            "name": "log_level",
             "required": false,
             "position": 16,
             "type": "execute",
