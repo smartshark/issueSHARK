@@ -11,6 +11,7 @@ before_install:
   - sudo pip3 install sphinx_rtd_theme
   - sudo pip3 install ghp_import
   - sudo pip3 uninstall --yes idna
+  - sudo pip3 uninstall --yes oauthlib
   - sudo pip3 install idna==2.7
 
 script:
