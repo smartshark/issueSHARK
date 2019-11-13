@@ -10,14 +10,13 @@ if not sys.version_info[0] == 3:
 
 setup(
     name='issueSHARK',
-    version='2.0.2',
+    version='2.0.3',
     author='Fabian Trautsch',
     author_email='trautsch@cs.uni-goettingen.de',
     description='Collect data from issue tracking systems',
     install_requires=['mongoengine', 'pymongo', 'requests>=2.10.0', 
-'cryptography>=1.3.4', 'python-dateutil', 'validate_email', 
-'jira==2.0.0',
-                      'pycoshark>=1.0.22', 'mock'],
+                      'cryptography>=1.3.4', 'python-dateutil', 'validate_email',
+                      'jira==2.0.0', 'pycoshark>=1.2.6', 'mock'],
     url='https://github.com/smartshark/issueSHARK',
     download_url='https://github.com/smartshark/issueSHARK/zipball/master',
     packages=find_packages(),
