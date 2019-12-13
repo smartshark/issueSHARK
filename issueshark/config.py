@@ -55,11 +55,12 @@ class Config(object):
 
         4. Proxy host and port must be set if either of them is set
         """
-        if self.token is None and self.issue_user is None:
-            raise ConfigValidationException('Token or issue user and issue password must be set.')
+        # allow public issue trackers without authentication
+        #if self.token is None and self.issue_user is None:
+        #    raise ConfigValidationException('Token or issue user and issue password must be set.')
 
-        if self.token is not None and self.issue_user is not None:
-            raise ConfigValidationException('Either token or issue user/password combination is used!')
+        #if self.token is not None and self.issue_user is not None:
+        #    raise ConfigValidationException('Either token or issue user/password combination is used!')
 
         if (self.issue_user is not None and self.issue_password is None) or \
                 (self.issue_password is not None and self.issue_user is None):

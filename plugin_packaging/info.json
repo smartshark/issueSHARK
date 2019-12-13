@@ -1,7 +1,7 @@
 {
     "name": "issueSHARK",
     "author": "Fabian Trautsch",
-    "version": "2.0.2",
+    "version": "2.0.4",
     "plugin_type": "other",
     "linux_libraries": [
     ],

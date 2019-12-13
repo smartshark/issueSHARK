@@ -459,7 +459,7 @@ class BugzillaBackend(BaseBackend):
                 email = None
                 name = username
             else:
-                email = user['email']
+                email = user.get('email', None)
                 name = user['real_name']
 
             # Check if email is none, this can happen as an email address may be excluded from the return value

@@ -10,7 +10,7 @@ if not sys.version_info[0] == 3:
 
 setup(
     name='issueSHARK',
-    version='2.0.3',
+    version='2.0.4',
     author='Fabian Trautsch',
     author_email='trautsch@cs.uni-goettingen.de',
     description='Collect data from issue tracking systems',
