@@ -59,7 +59,8 @@ class BugzillaBackend(BaseBackend):
             'status': 'status',
             'summary': 'title',
             'target_milestone': 'fix_versions',
-            'version': 'affects_versions'
+            'version': 'affects_versions',
+            'type': 'issue_type',
         }
 
     def process(self):
@@ -80,7 +81,7 @@ class BugzillaBackend(BaseBackend):
             .only('updated_at').first()
         starting_date = None
         if last_issue is not None:
-            starting_date = last_issue.updated_at
+           starting_date = last_issue.updated_at
 
         # Get all issues
         issues = self.bugzilla_agent.get_bug_list(last_change_time=starting_date, limit=50)
@@ -232,7 +233,6 @@ class BugzillaBackend(BaseBackend):
             logger.warning('Mapping for attribute %s not found.' % bz_at_name)
             mongo_event.status = bz_at_name
 
-
         if mongo_event.status == 'assignee_id':
             if bz_event['added'] is not None and bz_event['added']:
                 people_id = self._get_people(bz_event['added'])
@@ -291,6 +291,7 @@ class BugzillaBackend(BaseBackend):
             'summary': self._parse_string_field,
             'target_milestone': self._parse_string_field,
             'version': self._parse_string_field,
+            'type': self._parse_type_field,
         }
 
         correct_function = field_mapping.get(at_name_bz)
@@ -317,6 +318,31 @@ class BugzillaBackend(BaseBackend):
         :param at_name_bz: attribute name that should be parsed
         """
         return bz_issue[at_name_bz]
+
+    def _parse_type_field(self, bz_issue, at_name_bz):
+        """
+        Parses type fields, provides fallback if type field is not available
+
+        :param bz_issue: bugzilla issue (returned by the API)
+        :param at_name_bz: attribute name that should be parsed
+        """
+
+        # Bugzilla does not have a separate field for the type. Therefore, we distinguish between bug an enhancement
+        # based on the severity information
+        if bz_issue['severity'] == 'enhancement':
+            ret = 'Enhancement'
+        else:
+            ret = 'Bug'
+
+        # in some versions of bugzilla a type is provided, we just try to make consistent
+        if 'type' in bz_issue.keys():
+            if bz_issue['type'].lower() == 'defect':
+                ret = 'Bug'
+            elif bz_issue['type'].lower() == 'enhancement':
+                ret = 'Enhancement'
+            else:
+                ret = bz_issue['type']
+        return ret
 
     def _parse_array_field(self, bz_issue, at_name_bz):
         """
@@ -421,12 +447,13 @@ class BugzillaBackend(BaseBackend):
         if bz_issue['creator_detail'] is not None:
             mongo_issue.reporter_id = mongo_issue.creator_id
 
+        # moved to its own function, can be deleted later
         # Bugzilla does not have a separate field for the type. Therefore, we distinguish between bug an enhancement
         # based on the severity information
-        if bz_issue['severity'] == 'enhancement':
-            mongo_issue.issue_type = 'Enhancement'
-        else:
-            mongo_issue.issue_type = 'Bug'
+        # if bz_issue['severity'] == 'enhancement':
+        #     mongo_issue.issue_type = 'Enhancement'
+        # else:
+        #     mongo_issue.issue_type = 'Bug'
 
         return mongo_issue.save()
 
