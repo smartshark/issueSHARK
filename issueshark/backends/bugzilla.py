@@ -1,15 +1,14 @@
+import copy
+import logging
 import sys
 
 import dateutil.parser
 from mongoengine import DoesNotExist
-import copy
+from pycoshark.mongomodels import Issue, People, Event, IssueComment
+from validate_email import validate_email
 
 from issueshark.backends.basebackend import BaseBackend
 from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
-from validate_email import validate_email
-import logging
-
-from pycoshark.mongomodels import Issue, People, Event, IssueComment
 
 logger = logging.getLogger('backend')
 
@@ -18,6 +17,7 @@ class BugzillaBackend(BaseBackend):
     """
     Backend that collects data from a Bugzilla REST API
     """
+
     @property
     def identifier(self):
         """
@@ -44,23 +44,23 @@ class BugzillaBackend(BaseBackend):
 
         self.at_mapping = {
             'assigned_to_detail': 'assignee_id',
-            'blocks': 'issue_links',
-            'component': 'components',
-            'creation_time': 'created_at',
-            'creator_detail': 'creator_id',
-            'depends_on': 'issue_links',
-            'dupe_of': 'issue_links',
-            'keywords': 'labels',
-            'last_change_time': 'updated_at',
-            'op_sys': 'environment',
-            'platform': 'platform',
-            'resolution': 'resolution',
-            'severity': 'priority',
-            'status': 'status',
-            'summary': 'title',
-            'target_milestone': 'fix_versions',
-            'version': 'affects_versions',
-            'type': 'issue_type',
+            'blocks'            : 'issue_links',
+            'component'         : 'components',
+            'creation_time'     : 'created_at',
+            'creator_detail'    : 'creator_id',
+            'depends_on'        : 'issue_links',
+            'dupe_of'           : 'issue_links',
+            'keywords'          : 'labels',
+            'last_change_time'  : 'updated_at',
+            'op_sys'            : 'environment',
+            'platform'          : 'platform',
+            'resolution'        : 'resolution',
+            'severity'          : 'priority',
+            'status'            : 'status',
+            'summary'           : 'title',
+            'target_milestone'  : 'fix_versions',
+            'version'           : 'affects_versions',
+            'type'              : 'issue_type',
         }
 
     def process(self):
@@ -77,11 +77,11 @@ class BugzillaBackend(BaseBackend):
         """
         self.bugzilla_agent = BugzillaAgent(logger, self.config)
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at')\
+        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at') \
             .only('updated_at').first()
         starting_date = None
         if last_issue is not None:
-           starting_date = last_issue.updated_at
+            starting_date = last_issue.updated_at
 
         # Get all issues
         issues = self.bugzilla_agent.get_bug_list(last_change_time=starting_date, limit=50)
@@ -100,7 +100,8 @@ class BugzillaBackend(BaseBackend):
                 self._process_issue(issue)
 
             # Go through the next issues
-            issues = self.bugzilla_agent.get_bug_list(last_change_time=starting_date, limit=50, offset=processed_results)
+            issues = self.bugzilla_agent.get_bug_list(last_change_time=starting_date, limit=50,
+                                                      offset=processed_results)
             processed_results += 50
 
     def _process_issue(self, issue):
@@ -170,7 +171,7 @@ class BugzillaBackend(BaseBackend):
         """
         # Go through all comments of the issue
         comments_to_insert = []
-        logger.info('Processing %d comments...' % (len(comments)-1))
+        logger.info('Processing %d comments...' % (len(comments) - 1))
         i = -1
         for comment in comments:
             # Comment with count 0 is the description of the bug
@@ -275,23 +276,23 @@ class BugzillaBackend(BaseBackend):
         """
         field_mapping = {
             'assigned_to_detail': self._parse_author_details,
-            'blocks': self._parse_issue_links,
-            'component': self._parse_string_field,
-            'creation_time': self._parse_date_field,
-            'creator_detail': self._parse_author_details,
-            'depends_on': self._parse_issue_links,
-            'dupe_of': self._parse_issue_links,
-            'keywords': self._parse_array_field,
-            'last_change_time': self._parse_date_field,
-            'op_sys': self._parse_string_field,
-            'platform': self._parse_string_field,
-            'resolution': self._parse_string_field,
-            'severity': self._parse_string_field,
-            'status': self._parse_string_field,
-            'summary': self._parse_string_field,
-            'target_milestone': self._parse_string_field,
-            'version': self._parse_string_field,
-            'type': self._parse_type_field,
+            'blocks'            : self._parse_issue_links,
+            'component'         : self._parse_string_field,
+            'creation_time'     : self._parse_date_field,
+            'creator_detail'    : self._parse_author_details,
+            'depends_on'        : self._parse_issue_links,
+            'dupe_of'           : self._parse_issue_links,
+            'keywords'          : self._parse_array_field,
+            'last_change_time'  : self._parse_date_field,
+            'op_sys'            : self._parse_string_field,
+            'platform'          : self._parse_string_field,
+            'resolution'        : self._parse_string_field,
+            'severity'          : self._parse_string_field,
+            'status'            : self._parse_string_field,
+            'summary'           : self._parse_string_field,
+            'target_milestone'  : self._parse_string_field,
+            'version'           : self._parse_string_field,
+            'type'              : self._parse_type_field,
         }
 
         correct_function = field_mapping.get(at_name_bz)
@@ -361,14 +362,14 @@ class BugzillaBackend(BaseBackend):
         :param at_name_bz: attribute name that should be parsed
         """
         type_mapping = {
-            'blocks': 'Blocker',
-            'dupe_of': 'Duplicate',
+            'blocks'    : 'Blocker',
+            'dupe_of'   : 'Duplicate',
             'depends_on': 'Dependent',
         }
 
         effect_mapping = {
-            'blocks': 'blocks',
-            'dupe_of': 'duplicates',
+            'blocks'    : 'blocks',
+            'dupe_of'   : 'duplicates',
             'depends_on': 'depends on'
         }
 
@@ -377,15 +378,15 @@ class BugzillaBackend(BaseBackend):
             for link in bz_issue[at_name_bz]:
                 issue_links.append({
                     'issue_id': self._get_issue_id_by_system_id(link),
-                    'type': type_mapping[at_name_bz],
-                    'effect': effect_mapping[at_name_bz]
+                    'type'    : type_mapping[at_name_bz],
+                    'effect'  : effect_mapping[at_name_bz]
                 })
         else:
             if bz_issue[at_name_bz] is not None:
                 issue_links.append({
                     'issue_id': self._get_issue_id_by_system_id(bz_issue[at_name_bz]),
-                    'type': type_mapping[at_name_bz],
-                    'effect': effect_mapping[at_name_bz]
+                    'type'    : type_mapping[at_name_bz],
+                    'effect'  : effect_mapping[at_name_bz]
                 })
 
         return issue_links
@@ -510,7 +511,8 @@ class BugzillaBackend(BaseBackend):
         :param system_id: id of the issue in the bugzilla ITS
         """
         try:
-            issue_id = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(system_id)).only('id').get().id
+            issue_id = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(system_id)).only(
+                'id').get().id
         except DoesNotExist:
             issue_id = Issue(issue_system_id=self.issue_system_id, external_id=str(system_id)).save().id
 

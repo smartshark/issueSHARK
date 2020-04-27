@@ -1,9 +1,8 @@
+import time
 import urllib.parse
+from collections import OrderedDict
 
 import requests
-import time
-
-from collections import OrderedDict
 
 
 class BugzillaApiException(Exception):
@@ -17,6 +16,7 @@ class BugzillaAgent(object):
     """
     Class that is used to connect to the bugzilla API
     """
+
     def __init__(self, logger, config):
         """
         Initialization
@@ -32,8 +32,8 @@ class BugzillaAgent(object):
 
         # Get base url
         path = parsed_url.path.split('/')
-        path_without_endpoint = '/'.join(path[0:len(path)-1])
-        self.base_url = parsed_url.scheme+"://"+parsed_url.netloc+path_without_endpoint
+        path_without_endpoint = '/'.join(path[0:len(path) - 1])
+        self.base_url = parsed_url.scheme + "://" + parsed_url.netloc + path_without_endpoint
 
         self.username = config.issue_user
         self.password = config.issue_password
@@ -53,9 +53,9 @@ class BugzillaAgent(object):
         """
         options = {
             'product': self.project_name,
-            'offset': offset,
-            'limit': limit,
-            'order': 'creation_time%20ASC'
+            'offset' : offset,
+            'limit'  : limit,
+            'order'  : 'creation_time%20ASC'
         }
 
         if last_change_time is not None:
@@ -71,7 +71,7 @@ class BugzillaAgent(object):
         :param options: options for the request
         """
         try:
-            return self._send_request('user/'+str(id), options)['users'][0]
+            return self._send_request('user/' + str(id), options)['users'][0]
         except KeyError:
             return None
 
@@ -101,7 +101,8 @@ class BugzillaAgent(object):
         if new_since is not None:
             options['new_since'] = new_since
 
-        return self._send_request(('bug/%s/comment' % external_issue_id), new_since)['bugs'][str(external_issue_id)]['comments']
+        return self._send_request(('bug/%s/comment' % external_issue_id), new_since)['bugs'][str(external_issue_id)][
+            'comments']
 
     def _build_query(self, endpoint, options):
         if options is not None:
