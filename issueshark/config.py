@@ -12,6 +12,7 @@ class Config(object):
     """
     Config object, that holds all configuration parameters
     """
+
     def __init__(self, args):
         """
         Initialization
@@ -56,10 +57,10 @@ class Config(object):
         4. Proxy host and port must be set if either of them is set
         """
         # allow public issue trackers without authentication
-        #if self.token is None and self.issue_user is None:
+        # if self.token is None and self.issue_user is None:
         #    raise ConfigValidationException('Token or issue user and issue password must be set.')
 
-        #if self.token is not None and self.issue_user is not None:
+        # if self.token is not None and self.issue_user is not None:
         #    raise ConfigValidationException('Either token or issue user/password combination is used!')
 
         if (self.issue_user is not None and self.issue_password is None) or \
@@ -79,10 +80,10 @@ class Config(object):
         Gets the correct debug level, based on :mod:`logging`
         """
         choices = {
-            'DEBUG': logging.DEBUG,
-            'INFO': logging.INFO,
-            'WARNING': logging.WARNING,
-            'ERROR': logging.ERROR,
+            'DEBUG'   : logging.DEBUG,
+            'INFO'    : logging.INFO,
+            'WARNING' : logging.WARNING,
+            'ERROR'   : logging.ERROR,
             'CRITICAL': logging.CRITICAL
         }
 
@@ -93,9 +94,9 @@ class Config(object):
         Gets the proxy string to do the requests
         """
         if self.proxy_password is None or self.proxy_username is None:
-            return 'http://'+self.proxy_host+':'+self.proxy_port
+            return 'http://' + self.proxy_host + ':' + self.proxy_port
         else:
-            return 'http://'+self.proxy_username+':'+self.proxy_password+'@'+self.proxy_host+':'+self.proxy_port
+            return 'http://' + self.proxy_username + ':' + self.proxy_password + '@' + self.proxy_host + ':' + self.proxy_port
 
     def get_proxy_dictionary(self):
         """
@@ -103,7 +104,7 @@ class Config(object):
         """
         if self._use_proxy():
             proxies = {
-                'http': self._get_proxy_string(),
+                'http' : self._get_proxy_string(),
                 'https': self._get_proxy_string()
             }
 
@@ -151,6 +152,3 @@ class Config(object):
                    self.issue_user,
                    self.issue_password
                )
-
-
-
