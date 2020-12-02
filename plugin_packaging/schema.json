@@ -231,6 +231,12 @@
                "logical_type": "Name",
                "field_name": "platform",
                "desc": "Platform which is affected by the issue (e.g. Windows)"
+            },
+            {
+               "type": "BooleanType",
+               "logical_type": "Other",
+               "field_name": "is_pull_request",
+               "desc": "True if this issue is also a pull request, e.g., for Github."
             }
          ],
          "desc": "This collection stores the original issues. Meaning, that this collection holds all information that was originally added to the first report of the issue",

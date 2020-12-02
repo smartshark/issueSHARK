@@ -128,6 +128,9 @@ class GithubBackend(BaseBackend):
         issue.created_at = created_at
         issue.status = raw_issue['state']
         issue.labels = labels
+        # github issues can be pull requests too (gitea is probably the same)
+        if 'pull_request' in raw_issue.keys():
+            issue.is_pull_request = True
 
         if raw_issue['assignee'] is not None:
             issue.assignee_id = self._get_people(raw_issue['assignee']['url'])
