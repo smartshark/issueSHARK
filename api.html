@@ -1,0 +1,506 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>3. API Documentation &mdash; issueSHARK 2.0.4 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="2. How to Extend" href="extension.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> issueSHARK
+          
+
+          
+            
+            <img src="_static/SmartSHARK_read_the_docs_logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">1. Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extension.html">2. How to Extend</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">3. API Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#main-module">3.1. Main Module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#application">3.2. Application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-and-misc">3.3. Configuration and Misc</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#configuration">3.3.1. Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#backends">3.4. Backends</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#basebackend">3.4.1. BaseBackend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jirabackend">3.4.2. JiraBackend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#githubbackend">3.4.3. GithubBackend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bugzillabackend">3.4.4. BugzillaBackend</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">issueSHARK</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li><span class="section-number">3. </span>API Documentation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="api-documentation">
+<h1><span class="section-number">3. </span>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="main-module">
+<h2><span class="section-number">3.1. </span>Main Module<a class="headerlink" href="#main-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="application">
+<h2><span class="section-number">3.2. </span>Application<a class="headerlink" href="#application" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="configuration-and-misc">
+<h2><span class="section-number">3.3. </span>Configuration and Misc<a class="headerlink" href="#configuration-and-misc" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="configuration">
+<h3><span class="section-number">3.3.1. </span>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="issueshark.config.Config">
+<em class="property">class </em><code class="sig-prename descclassname">issueshark.config.</code><code class="sig-name descname">Config</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/config.html#Config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.config.Config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Config object, that holds all configuration parameters</p>
+<dl class="py method">
+<dt id="issueshark.config.Config.get_debug_level">
+<code class="sig-name descname">get_debug_level</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/config.html#Config.get_debug_level"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.config.Config.get_debug_level" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the correct debug level, based on <a class="reference external" href="https://docs.python.org/3.5/library/logging.html#module-logging" title="(in Python v3.5)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.config.Config.get_proxy_dictionary">
+<code class="sig-name descname">get_proxy_dictionary</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/config.html#Config.get_proxy_dictionary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.config.Config.get_proxy_dictionary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates the proxy directory for the requests</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.config.Config.use_token">
+<code class="sig-name descname">use_token</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/config.html#Config.use_token"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.config.Config.use_token" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if token is set</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="backends">
+<h2><span class="section-number">3.4. </span>Backends<a class="headerlink" href="#backends" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="basebackend">
+<h3><span class="section-number">3.4.1. </span>BaseBackend<a class="headerlink" href="#basebackend" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="issueshark.backends.basebackend.BaseBackend">
+<em class="property">class </em><code class="sig-prename descclassname">issueshark.backends.basebackend.</code><code class="sig-name descname">BaseBackend</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cfg</span></em>, <em class="sig-param"><span class="n">issue_system_id</span></em>, <em class="sig-param"><span class="n">project_id</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/basebackend.html#BaseBackend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.basebackend.BaseBackend" title="Permalink to this definition">¶</a></dt>
+<dd><p>BaseBackend from which all backends must inherit</p>
+<dl class="py method">
+<dt id="issueshark.backends.basebackend.BaseBackend.find_fitting_backend">
+<em class="property">static </em><code class="sig-name descname">find_fitting_backend</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cfg</span></em>, <em class="sig-param"><span class="n">issue_system_id</span></em>, <em class="sig-param"><span class="n">project_id</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/basebackend.html#BaseBackend.find_fitting_backend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.basebackend.BaseBackend.find_fitting_backend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds a fitting backend by first importing all backends and checking if the identifier of the backend
+matches the identifier given by the user</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cfg</strong> – holds als configuration. Object of class <a class="reference internal" href="#issueshark.config.Config" title="issueshark.config.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a></p></li>
+<li><p><strong>issue_system_id</strong> – id of the issue system for which data should be collected. <a class="reference external" href="https://api.mongodb.com/python/current/api/bson/objectid.html#bson.objectid.ObjectId" title="(in PyMongo v3.9.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bson.objectid.ObjectId</span></code></a></p></li>
+<li><p><strong>project_id</strong> – id of the project to which the issue system belongs. <a class="reference external" href="https://api.mongodb.com/python/current/api/bson/objectid.html#bson.objectid.ObjectId" title="(in PyMongo v3.9.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bson.objectid.ObjectId</span></code></a></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.basebackend.BaseBackend.get_all_possible_backend_options">
+<em class="property">static </em><code class="sig-name descname">get_all_possible_backend_options</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/basebackend.html#BaseBackend.get_all_possible_backend_options"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.basebackend.BaseBackend.get_all_possible_backend_options" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns all possible backend options by importing the backends and getting their identifier</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.basebackend.BaseBackend.identifier">
+<em class="property">abstract property </em><code class="sig-name descname">identifier</code><a class="headerlink" href="#issueshark.backends.basebackend.BaseBackend.identifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Identifier of the backend</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Must be unique among all backends</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.basebackend.BaseBackend.process">
+<em class="property">abstract </em><code class="sig-name descname">process</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/basebackend.html#BaseBackend.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.basebackend.BaseBackend.process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method that is called if the collection process should be started</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="jirabackend">
+<h3><span class="section-number">3.4.2. </span>JiraBackend<a class="headerlink" href="#jirabackend" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="issueshark.backends.jirabackend.JiraBackend">
+<em class="property">class </em><code class="sig-prename descclassname">issueshark.backends.jirabackend.</code><code class="sig-name descname">JiraBackend</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cfg</span></em>, <em class="sig-param"><span class="n">issue_system_id</span></em>, <em class="sig-param"><span class="n">project_id</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/jirabackend.html#JiraBackend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.jirabackend.JiraBackend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Backend that collects data via the JIRA API</p>
+<dl class="py method">
+<dt id="issueshark.backends.jirabackend.JiraBackend.identifier">
+<em class="property">property </em><code class="sig-name descname">identifier</code><a class="headerlink" href="#issueshark.backends.jirabackend.JiraBackend.identifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Identifier of the backend (jira)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.jirabackend.JiraBackend.process">
+<code class="sig-name descname">process</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/jirabackend.html#JiraBackend.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.jirabackend.JiraBackend.process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Processes the issues:</p>
+<ol class="arabic simple">
+<li><p>Get all issues that are updated since the last time we executed this</p></li>
+<li><p>Go through all issues step by step, see: <code class="xref py py-func docutils literal notranslate"><span class="pre">_process_issue()</span></code></p></li>
+</ol>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="githubbackend">
+<h3><span class="section-number">3.4.3. </span>GithubBackend<a class="headerlink" href="#githubbackend" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="issueshark.backends.github.GithubBackend">
+<em class="property">class </em><code class="sig-prename descclassname">issueshark.backends.github.</code><code class="sig-name descname">GithubBackend</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cfg</span></em>, <em class="sig-param"><span class="n">issue_system_id</span></em>, <em class="sig-param"><span class="n">project_id</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/github.html#GithubBackend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.github.GithubBackend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Backend that collects issue from github</p>
+<dl class="py method">
+<dt id="issueshark.backends.github.GithubBackend.get_issues">
+<code class="sig-name descname">get_issues</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">search_state</span><span class="o">=</span><span class="default_value">'all'</span></em>, <em class="sig-param"><span class="n">start_date</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">sorting</span><span class="o">=</span><span class="default_value">'asc'</span></em>, <em class="sig-param"><span class="n">pagecount</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/github.html#GithubBackend.get_issues"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.github.GithubBackend.get_issues" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets issues from the github API</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_state</strong> – state to be searched (e.g., all)</p></li>
+<li><p><strong>start_date</strong> – date from which issues should be collected</p></li>
+<li><p><strong>sorting</strong> – sorting of the issues</p></li>
+<li><p><strong>pagecount</strong> – page number</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.github.GithubBackend.identifier">
+<em class="property">property </em><code class="sig-name descname">identifier</code><a class="headerlink" href="#issueshark.backends.github.GithubBackend.identifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Identifier of the backend (github)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.github.GithubBackend.process">
+<code class="sig-name descname">process</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/github.html#GithubBackend.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.github.GithubBackend.process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Processes the issues from github</p>
+<ol class="arabic simple">
+<li><p>Gets the updated_at value of the last issue that was stored (newest updated issue)</p></li>
+<li><p>Gets issues since this date</p></li>
+<li><p>Calls for each issue <a class="reference internal" href="#issueshark.backends.github.GithubBackend.store_issue" title="issueshark.backends.github.GithubBackend.store_issue"><code class="xref py py-func docutils literal notranslate"><span class="pre">store_issue()</span></code></a></p></li>
+<li><p>Raises the page counter</p></li>
+</ol>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.github.GithubBackend.store_issue">
+<code class="sig-name descname">store_issue</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">raw_issue</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/github.html#GithubBackend.store_issue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.github.GithubBackend.store_issue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transforms the issue from a github issue to our issue model</p>
+<ol class="arabic simple">
+<li><p>Transforms the issue to our model</p></li>
+<li><p>Processes the comments of the issue. See: <code class="xref py py-func docutils literal notranslate"><span class="pre">_process_comments()</span></code></p></li>
+</ol>
+<p>3. Processes the events of the issue. See: <code class="xref py py-func docutils literal notranslate"><span class="pre">_process_events()</span></code>.
+During this: set back the issue and store it again.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>raw_issue</strong> – like we got it from github</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="issueshark.backends.github.GitHubAPIError">
+<em class="property">class </em><code class="sig-prename descclassname">issueshark.backends.github.</code><code class="sig-name descname">GitHubAPIError</code><a class="reference internal" href="_modules/issueshark/backends/github.html#GitHubAPIError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.github.GitHubAPIError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exception that is thrown if an error with the github API occur.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="bugzillabackend">
+<h3><span class="section-number">3.4.4. </span>BugzillaBackend<a class="headerlink" href="#bugzillabackend" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="issueshark.backends.bugzilla.BugzillaBackend">
+<em class="property">class </em><code class="sig-prename descclassname">issueshark.backends.bugzilla.</code><code class="sig-name descname">BugzillaBackend</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cfg</span></em>, <em class="sig-param"><span class="n">issue_system_id</span></em>, <em class="sig-param"><span class="n">project_id</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/bugzilla.html#BugzillaBackend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.bugzilla.BugzillaBackend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Backend that collects data from a Bugzilla REST API</p>
+<dl class="py method">
+<dt id="issueshark.backends.bugzilla.BugzillaBackend.identifier">
+<em class="property">property </em><code class="sig-name descname">identifier</code><a class="headerlink" href="#issueshark.backends.bugzilla.BugzillaBackend.identifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Identifier (bugzilla)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.bugzilla.BugzillaBackend.process">
+<code class="sig-name descname">process</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/bugzilla.html#BugzillaBackend.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.bugzilla.BugzillaBackend.process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets all the issues and their updates</p>
+<ol class="arabic simple">
+<li><p>Gets the last stored issues updated_at field</p></li>
+<li><p>Gets all issues that was last change since this value</p></li>
+<li><p>Processes the results in 50-steps</p></li>
+<li><p>For each issue calls: <code class="xref py py-func docutils literal notranslate"><span class="pre">issueshark.backends.bugzilla.BugzillaBackend._process_issue()</span></code></p></li>
+</ol>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="issueshark.backends.helpers.bugzillaagent.BugzillaAgent">
+<em class="property">class </em><code class="sig-prename descclassname">issueshark.backends.helpers.bugzillaagent.</code><code class="sig-name descname">BugzillaAgent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logger</span></em>, <em class="sig-param"><span class="n">config</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/helpers/bugzillaagent.html#BugzillaAgent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.helpers.bugzillaagent.BugzillaAgent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class that is used to connect to the bugzilla API</p>
+<dl class="py method">
+<dt id="issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_bug_list">
+<code class="sig-name descname">get_bug_list</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">last_change_time</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">offset</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">limit</span><span class="o">=</span><span class="default_value">50</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/helpers/bugzillaagent.html#BugzillaAgent.get_bug_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_bug_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a list of bugs from the bugzilla API</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>last_change_time</strong> – time since the bug was last changed</p></li>
+<li><p><strong>offset</strong> – offset of the list that is returned (e.g., if 100 bugs were found and offset is 10 Bug 11-100 is returned)</p></li>
+<li><p><strong>limit</strong> – limits the number of bugs that are returned</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_comments">
+<code class="sig-name descname">get_comments</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">external_issue_id</span></em>, <em class="sig-param"><span class="n">new_since</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/helpers/bugzillaagent.html#BugzillaAgent.get_comments"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_comments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get comments for a specific issue</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>external_issue_id</strong> – id of the issue how it is called in the ITS</p></li>
+<li><p><strong>new_since</strong> – gets only these comments, that are new since this date</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_issue_history">
+<code class="sig-name descname">get_issue_history</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">external_issue_id</span></em>, <em class="sig-param"><span class="n">new_since</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/helpers/bugzillaagent.html#BugzillaAgent.get_issue_history"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_issue_history" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the issue history for a specific issue</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>external_issue_id</strong> – id of the issue how it is called in the ITS</p></li>
+<li><p><strong>new_since</strong> – gets only these history, that is new since this date</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_user">
+<code class="sig-name descname">get_user</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">id</span></em>, <em class="sig-param"><span class="n">options</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/issueshark/backends/helpers/bugzillaagent.html#BugzillaAgent.get_user"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_user" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the user via the id</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – id of the user</p></li>
+<li><p><strong>options</strong> – options for the request</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="issueshark.backends.helpers.bugzillaagent.BugzillaApiException">
+<em class="property">class </em><code class="sig-prename descclassname">issueshark.backends.helpers.bugzillaagent.</code><code class="sig-name descname">BugzillaApiException</code><a class="reference internal" href="_modules/issueshark/backends/helpers/bugzillaagent.html#BugzillaApiException"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#issueshark.backends.helpers.bugzillaagent.BugzillaApiException" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exception that is thrown, if there was a problem with the bugzilla API</p>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="extension.html" class="btn btn-neutral float-left" title="2. How to Extend" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2017, Fabian Trautsch
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
