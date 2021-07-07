@@ -1,15 +1,16 @@
-import abc
+import logging
 import os
 import sys
-import logging
+from abc import abstractmethod, ABCMeta
 
 
-class BaseBackend(metaclass=abc.ABCMeta):
+class BaseBackend(metaclass=ABCMeta):
     """
     BaseBackend from which all backends must inherit
     """
 
-    @abc.abstractproperty
+    @property
+    @abstractmethod
     def identifier(self):
         """
         Identifier of the backend
@@ -34,7 +35,7 @@ class BaseBackend(metaclass=abc.ABCMeta):
         if self.config is not None:
             self.debug_level = self.config.get_debug_level()
 
-    @abc.abstractmethod
+    @abstractmethod
     def process(self):
         """
         Method that is called if the collection process should be started
