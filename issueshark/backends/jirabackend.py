@@ -91,11 +91,17 @@ class JiraBackend(BaseBackend):
         url_to_jira = self._create_url_to_jira_rest_interface()
 
         # Connect to jira
-        self.jira_client = JIRA(
-            {'server': url_to_jira},
-            basic_auth=(self.config.issue_user, self.config.issue_password),
-            proxies=self.config.get_proxy_dictionary()
-        )
+        if self.config.issue_user and self.config.issue_password:
+            self.jira_client = JIRA(
+                {'server': url_to_jira},
+                basic_auth=(self.config.issue_user, self.config.issue_password),
+                proxies=self.config.get_proxy_dictionary()
+            )
+        else:
+            self.jira_client = JIRA(
+                {'server': url_to_jira},
+                proxies=self.config.get_proxy_dictionary()
+            )
 
         # Get last modification date (since then, we will collect bugs)
         query = self._create_issue_query()
