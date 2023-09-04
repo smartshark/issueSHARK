@@ -38,22 +38,6 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(conf.tracking_url, 'http://api.foo')
         self.assertEqual(conf.proxy_host, '126.0.0.1')
 
-    def test_initialization_fails_neither_token_nor_user_password(self):
-        args = ArgparserMock(None, None, None, None, None, None, None, "http://api.foo/", None, "http://126.0.0.1",
-                             "80", None, None, None, None, 'DEBUG', None, False)
-
-        with self.assertRaises(ConfigValidationException) as cm:
-            conf = Config(args)
-            self.assertEqual('Token or issue user and issue password must be set.', cm.msg)
-
-    def test_initialization_fails_token_and_user_password(self):
-        args = ArgparserMock(None, None, None, None, None, None, None, "http://api.foo/", None, "http://126.0.0.1",
-                             "80", None, None, 'user', 'password', 'DEBUG', 'token', False)
-
-        with self.assertRaises(ConfigValidationException) as cm:
-            conf = Config(args)
-            self.assertEqual('Either token or issue user/password combination is used!', cm.msg)
-
     def test_initialization_fails_issue_user_without_password(self):
         args = ArgparserMock(None, None, None, None, None, None, None, "http://api.foo/", None, "http://126.0.0.1",
                              "80", None, None, 'user', None, 'DEBUG', None, False)

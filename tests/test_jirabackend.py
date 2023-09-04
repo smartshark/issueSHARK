@@ -8,6 +8,8 @@ import json
 import jira
 import mock
 from mongoengine import connect
+import mongomock
+import mongoengine
 
 from issueshark.backends.jirabackend import JiraBackend
 from pycoshark.mongomodels import IssueSystem, Project, Issue, Event, IssueComment, People
@@ -66,13 +68,8 @@ class JiraBackendTest(unittest.TestCase):
         # Create testconfig
         config = configparser.ConfigParser()
         config.read(os.path.dirname(os.path.realpath(__file__)) + "/data/used_test_config.cfg")
-
-        # Setting up database with data that is normally put into it via vcs program
-        connect(config['Database']['db_database'], username=config['Database']['db_user'],
-                password=config['Database']['db_password'], host=config['Database']['db_hostname'],
-                port=int(config['Database']['db_port']),
-                authentication_source=config['Database']['db_authentication'],
-                connect=False)
+        mongoengine.connection.disconnect()
+        mongoengine.connect('testdb', host='mongodb://localhost', mongo_client_class=mongomock.MongoClient)
 
         Project.drop_collection()
         IssueSystem.drop_collection()
