@@ -9,7 +9,7 @@ from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
 from validate_email import validate_email
 import logging
 
-from pycoshark.mongomodels import Issue, People, Event, IssueComment
+from pycoshark.mongomodels import Issue, People, IssueEvent, IssueComment
 
 logger = logging.getLogger('backend')
 
@@ -25,7 +25,7 @@ class BugzillaBackend(BaseBackend):
         """
         return 'bugzillaOld'
 
-    def __init__(self, cfg, issue_system_id, project_id):
+    def __init__(self, cfg, issue_system_id, project_id, last_system_id):
         """
         Initialization
         Initializes the people dictionary see: :func:`~issueshark.backends.bugzilla.BugzillaBackend._get_people`
@@ -36,7 +36,7 @@ class BugzillaBackend(BaseBackend):
         :param issue_system_id: id of the issue system for which data should be collected. :class:`bson.objectid.ObjectId`
         :param project_id: id of the project to which the issue system belongs. :class:`bson.objectid.ObjectId`
         """
-        super().__init__(cfg, issue_system_id, project_id)
+        super().__init__(cfg, issue_system_id, project_id, last_system_id)
 
         logger.setLevel(self.debug_level)
         self.bugzilla_agent = None
@@ -156,7 +156,7 @@ class BugzillaBackend(BaseBackend):
 
         # Store events
         if events_to_insert:
-            Event.objects.insert(events_to_insert, load_bulk=False)
+            IssueEvent.objects.insert(events_to_insert, load_bulk=False)
 
         # Store comments
         self._process_comments(mongo_issue.id, comments)
@@ -212,10 +212,10 @@ class BugzillaBackend(BaseBackend):
         """
         is_new_event = True
         try:
-            mongo_event = Event.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
+            mongo_event = IssueEvent.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
             is_new_event = False
         except DoesNotExist:
-            mongo_event = Event(
+            mongo_event = IssueEvent(
                 external_id=unique_event_id,
                 issue_id=mongo_issue.id,
                 created_at=change_date,

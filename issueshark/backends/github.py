@@ -2,7 +2,6 @@ import time
 
 import sys
 import datetime
-import copy
 
 from mongoengine import DoesNotExist
 from requests import RequestException
@@ -39,7 +38,7 @@ class GithubBackend(BaseBackend):
         """
         return 'github'
 
-    def __init__(self, cfg, issue_system_id, project_id):
+    def __init__(self, cfg, issue_system_id, project_id, last_system_id):
         """
         Initialization
         Initializes the people dictionary see: :func:`~issueshark.backends.github.GithubBackend._get_people`
@@ -49,7 +48,7 @@ class GithubBackend(BaseBackend):
         :param issue_system_id: id of the issue system for which data should be collected. :class:`bson.objectid.ObjectId`
         :param project_id: id of the project to which the issue system belongs. :class:`bson.objectid.ObjectId`
         """
-        super().__init__(cfg, issue_system_id, project_id)
+        super().__init__(cfg, issue_system_id, project_id, last_system_id)
 
         logger.setLevel(self.debug_level)
         self.people = {}
@@ -68,14 +67,8 @@ class GithubBackend(BaseBackend):
         """
         logger.info("Starting the collection process...")
 
-        # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at').only('updated_at').first()
-        starting_date = None
-        if last_issue is not None:
-            starting_date = last_issue.updated_at
-
         # Get all issues
-        issues = self.get_issues(start_date=starting_date)
+        issues = self.get_issues()
 
         # If no new bugs found, return
         if len(issues) == 0:
@@ -87,10 +80,12 @@ class GithubBackend(BaseBackend):
         while len(issues) > 0:
             for issue in issues:
                 mongo_issue = self.store_issue(issue)
-                self._process_comments(str(issue['number']), mongo_issue)
-                self._process_events(str(issue['number']), mongo_issue)
+                self._process_comments(mongo_issue)
+                self._process_events(mongo_issue)
             page_number += 1
-            issues = self.get_issues(pagecount=page_number, start_date=starting_date)
+            issues = self.get_issues(pagecount=page_number)
+
+        self.save_issues()
 
     def store_issue(self, raw_issue):
         """
@@ -106,38 +101,43 @@ class GithubBackend(BaseBackend):
         :param raw_issue: like we got it from github
         """
         logger.debug('Processing issue %s' % raw_issue)
-        updated_at = dateutil.parser.parse(raw_issue['updated_at'])
-        created_at = dateutil.parser.parse(raw_issue['created_at'])
-
+        updated_at = dateutil.parser.parse(raw_issue['updated_at']).replace(tzinfo=None)
+        created_at = dateutil.parser.parse(raw_issue['created_at']).replace(tzinfo=None)
+        self.issue_id = str(raw_issue['number'])
         try:
             # We can not return here, as the issue might be updated. This means, that the title could be updated
             # as well as comments and new events
-            issue = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(raw_issue['number'])).get()
+            mongo_issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=self.issue_id).get()
+            self.old_issues['issues'][self.issue_id] = mongo_issue
         except DoesNotExist:
-            issue = Issue(issue_system_id=self.issue_system_id, external_id=str(raw_issue['number']))
+            mongo_issue = None
+
+        new_issue = Issue(issue_system_ids=[self.issue_system_id], external_id=self.issue_id)
 
         labels = []
         for label in raw_issue['labels']:
             labels.append(label['name'])
 
-        issue.reporter_id = self._get_people(raw_issue['user']['url'])
-        issue.creator_id = issue.reporter_id
-        issue.title = raw_issue['title']
-        issue.desc = raw_issue['body']
-        issue.updated_at = updated_at
-        issue.created_at = created_at
-        issue.status = raw_issue['state']
-        issue.labels = labels
+        new_issue.reporter_id = self._get_people(raw_issue['user']['url'])
+        new_issue.creator_id = new_issue.reporter_id
+        new_issue.title = raw_issue['title']
+        new_issue.desc = raw_issue['body']
+        new_issue.updated_at = updated_at
+        new_issue.created_at = created_at
+        new_issue.status = raw_issue['state']
+        new_issue.labels = labels
         # github issues can be pull requests too (gitea is probably the same)
         if 'pull_request' in raw_issue.keys():
-            issue.is_pull_request = True
+            new_issue.is_pull_request = True
 
         if raw_issue['assignee'] is not None:
-            issue.assignee_id = self._get_people(raw_issue['assignee']['url'])
+            new_issue.assignee_id = self._get_people(raw_issue['assignee']['url'])
 
-        return issue.save()
+        self.parsed_issues['issues'][self.issue_id] = new_issue
+        self.check_diff_issue(mongo_issue, new_issue)
+        return mongo_issue
 
-    def _process_events(self, system_id, mongo_issue):
+    def _process_events(self, mongo_issue):
         """
         Processes events of an issue.
 
@@ -148,47 +148,38 @@ class GithubBackend(BaseBackend):
         :param mongo_issue: object of our issue model
         """
         # Get all events to the corresponding issue
-        target_url = '%s/%s/events' % (self.config.tracking_url, system_id)
+        target_url = '%s/%s/events' % (self.config.tracking_url, self.issue_id)
         events = self._send_request(target_url)
 
         # Go through all events and create mongo objects from it
         events_to_store = []
         for raw_event in events:
-            created_at = dateutil.parser.parse(raw_event['created_at'])
+            created_at = dateutil.parser.parse(raw_event['created_at']).replace(tzinfo=None)
 
             # If the event is already saved, we can just continue, because nothing will change on the event
-            try:
-                Event.objects(external_id=raw_event['id'], issue_id=mongo_issue.id).get()
-                continue
-            except DoesNotExist:
-                event = Event(external_id=raw_event['id'],
-                              issue_id=mongo_issue.id, created_at=created_at, status=raw_event['event'])
+            mongo_event = None
+            if mongo_issue:
+                try:
+                    mongo_event = IssueEvent.objects(external_id=str(raw_event['id']), issue_id=mongo_issue.id).get()
+                except DoesNotExist:
+                    mongo_event = None
+
+            new_event = IssueEvent(external_id=str(raw_event['id']), created_at=created_at, status=raw_event['event'])
 
             if raw_event['commit_id'] is not None:
                 # It can happen that a commit from another repository references this issue. Therefore, we can not
                 # find the commit, as it is not part of THIS repository
-                try:
-                    vcs_system_ids = [system.id for system in
-                                      VCSSystem.objects(project_id=self.project_id).only('id').all()]
-
-                    event.commit_id = Commit.objects(vcs_system_id__in=vcs_system_ids,
-                                                 revision_hash=raw_event['commit_id']).only('id').get().id
-                except DoesNotExist:
-                    pass
-
+                new_event.commit_sha = raw_event['commit_id']
             if 'actor' in raw_event and raw_event['actor'] is not None:
-                event.author_id = self._get_people(raw_event['actor']['url'])
+                new_event.author_id = self._get_people(raw_event['actor']['url'])
 
-            self._set_old_and_new_value_for_event(event, raw_event, mongo_issue)
-            mongo_issue.save()
+            new_event = self._set_old_and_new_value_for_event(new_event, raw_event)
+            if self.issue_id not in self.parsed_issues['events']:
+                self.parsed_issues['events'][self.issue_id] = {}
+            self.parsed_issues['events'][self.issue_id][str(raw_event['id'])] = new_event
+            self.check_diff_comment_event(mongo_event, new_event)
 
-            events_to_store.append(event)
-
-        # Bulk insert to database
-        if events_to_store:
-            Event.objects.insert(events_to_store, load_bulk=False)
-
-    def _set_old_and_new_value_for_event(self, event, raw_event, mongo_issue):
+    def _set_old_and_new_value_for_event(self, event, raw_event):
         """
         Sets the old and new value for an event to be stored
 
@@ -226,10 +217,9 @@ class GithubBackend(BaseBackend):
         if raw_event['event'] == 'renamed' and 'rename' in raw_event:
             event.old_value = raw_event['rename']['from']
             event.new_value = raw_event['rename']['to']
+        return event
 
-            mongo_issue.title = raw_event['rename']['from']
-
-    def _process_comments(self, system_id, mongo_issue):
+    def _process_comments(self, mongo_issue):
         """
         Processes the comments of an issue
 
@@ -237,31 +227,31 @@ class GithubBackend(BaseBackend):
         :param mongo_issue: object of our issue model
         """
         # Get all the comments for the corresponding issue
-        target_url = '%s/%s/comments' % (self.config.tracking_url, system_id)
+        target_url = '%s/%s/comments' % (self.config.tracking_url, self.issue_id)
         comments = self._send_request(target_url)
 
         # Go through all comments
-        comments_to_insert = []
         for raw_comment in comments:
-            created_at = dateutil.parser.parse(raw_comment['created_at'])
-            try:
-                IssueComment.objects(external_id=raw_comment['id'], issue_id=mongo_issue.id).get()
-                continue
-            except DoesNotExist:
-                comment = IssueComment(
-                    external_id=raw_comment['id'],
-                    issue_id=mongo_issue.id,
-                    created_at=created_at,
-                    author_id=self._get_people(raw_comment['user']['url']),
-                    comment=raw_comment['body'],
-                )
-                comments_to_insert.append(comment)
+            created_at = dateutil.parser.parse(raw_comment['created_at']).replace(tzinfo=None)
+            mongo_comment = None
+            if mongo_issue:
+                try:
+                    mongo_comment = IssueComment.objects(external_id=str(raw_comment['id']), issue_id=mongo_issue.id).get()
+                except DoesNotExist:
+                    mongo_comment = None
 
-        # If comments need to be inserted -> bulk insert
-        if comments_to_insert:
-            IssueComment.objects.insert(comments_to_insert, load_bulk=False)
+            new_comment = IssueComment(
+                external_id=str(raw_comment['id']),
+                created_at=created_at,
+                author_id=self._get_people(raw_comment['user']['url']),
+                comment=raw_comment['body'],
+            )
+            if self.issue_id not in self.parsed_issues['comments']:
+                self.parsed_issues['comments'][self.issue_id] = {}
+            self.parsed_issues['comments'][self.issue_id][str(raw_comment['id'])] = new_comment
+            self.check_diff_comment_event(mongo_comment, new_comment)
 
-    def get_issues(self, search_state='all', start_date=None, sorting='asc', pagecount=1):
+    def get_issues(self, search_state='all', sorting='asc', pagecount=1):
         """
         Gets issues from the github API
 
@@ -274,8 +264,6 @@ class GithubBackend(BaseBackend):
         target_url = self.config.tracking_url + "?state=" + search_state + "&page=" + str(pagecount) \
             + "&per_page=100&sort=updated&direction=" + sorting
 
-        if start_date:
-            target_url = target_url + "&since=" + str(start_date)
 
         issues = self._send_request(target_url)
         return issues
