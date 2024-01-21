@@ -16,7 +16,7 @@ setup(
     description='Collect data from issue tracking systems',
     install_requires=['mongoengine>=0.23.0', 'pymongo', 'requests>=2.10.0', 'oauthlib>=3.0.0',
                       'cryptography>=1.3.4', 'python-dateutil', 'validate_email',
-                      'jira==2.0.0', 'pycoshark>=1.3.2', 'mock'],
+                      'jira==2.0.0', 'pycoshark>=1.3.2', 'mock', 'deepdiff'],
     url='https://github.com/smartshark/issueSHARK',
     download_url='https://github.com/smartshark/issueSHARK/zipball/master',
     packages=find_packages(),

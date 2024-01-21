@@ -36,7 +36,7 @@ class JiraBackend(BaseBackend):
         """
         return 'jira'
 
-    def __init__(self, cfg, issue_system_id, project_id):
+    def __init__(self, cfg, issue_system_id, project_id, last_system_id):
         """
         Initialization
         Initializes the people dictionary see: :func:`~issueshark.backends.jirabackend.JiraBackend._get_people`
@@ -47,7 +47,7 @@ class JiraBackend(BaseBackend):
         :param issue_system_id: id of the issue system for which data should be collected. :class:`bson.objectid.ObjectId`
         :param project_id: id of the project to which the issue system belongs. :class:`bson.objectid.ObjectId`
         """
-        super().__init__(cfg, issue_system_id, project_id)
+        super().__init__(cfg, issue_system_id, project_id, last_system_id)
 
         logger.setLevel(self.debug_level)
         self.people = {}
@@ -120,17 +120,64 @@ class JiraBackend(BaseBackend):
 
         # Otherwise, go through all issues
         processed_results = 50
-        while len(issues) > 0:
+        while processed_results < 51:
             logger.info("Processing %d issues..." % len(issues))
             for issue in issues:
                 self._process_issue(issue.key)
-
             # Go through the next issues
             issues = self.jira_client.search_issues(query, startAt=processed_results, maxResults=50, fields='summary')
             logger.debug('Found %d issues via url %s' %
                          (len(issues), self.jira_client._get_url('search?jql=%s&startAt=%d&maxResults=50' %
                                                                 (quote_plus(query), processed_results))))
+            print('wow')
             processed_results += 50
+        self.save_issues()
+        self.link_issues()
+
+    def link_issues(self):
+        """
+            Link parsed issues and events from an external issue tracking system to corresponding MongoDB documents.
+
+            This method iterates through the parsed issues and their events, updating the issue and event documents
+            in the MongoDB database based on external identifiers. It performs the following tasks:
+
+            1. Iterates through parsed issues, retrieves corresponding MongoDB document, and updates linked issues and parent issue.
+            2. Iterates through events of each issue, retrieves corresponding MongoDB document, and updates external issue references.
+        """
+        for issue_id, issue in self.parsed_issues['issues'].items():
+            try:
+                issue = Issue.objects.get(issue_system_ids=self.issue_system_id, external_id=issue_id)
+            except DoesNotExist:
+                continue
+            for link_issue in issue.issue_links:
+                if isinstance(link_issue['issue_id'], str):
+                    link_issue['issue_id'] = self._get_issue_id_by_external_id(link_issue['issue_id'])
+                    issue.save()
+            if isinstance(issue.parent_issue_id, str):
+                issue.parent_issue_id = self._get_issue_id_by_external_id(issue.parent_issue_id)
+                issue.save()
+            if issue_id not in self.parsed_issues['events']:
+                continue
+            for item_id, item in self.parsed_issues['events'][issue_id].items():
+                try:
+                    event = IssueEvent.objects.get(issue_id=issue.id, external_id=item_id)
+                except DoesNotExist:
+                    continue
+                if isinstance(event.new_value, str):
+                    external_id = event.new_value
+                    event.new_value = self._get_issue_id_by_external_id(external_id)
+                if isinstance(event.old_value, str):
+                    external_id = event.old_value
+                    event.old_value = self._get_issue_id_by_external_id(external_id)
+                if isinstance(event.new_value, dict) and isinstance(event.new_value['issue_id'], str):
+                    external_id = event.new_value['issue_id']
+                    mongo_issue_id = self._get_issue_id_by_external_id(external_id)
+                    event.new_value = {'issue_id': mongo_issue_id, 'type': event.new_value['type'], 'effect': event.new_value['effect']}
+                if isinstance(event.old_value, dict) and isinstance(event.old_value['issue_id'], str):
+                    external_id = event.old_value['issue_id']
+                    mongo_issue_id = self._get_issue_id_by_external_id(external_id)
+                    event.old_value = {'issue_id': mongo_issue_id, 'type': event.old_value['type'], 'effect': event.old_value['effect']}
+                event.save()
 
     def _create_url_to_jira_rest_interface(self):
         """
@@ -156,19 +203,7 @@ class JiraBackend(BaseBackend):
         # Get project name from last part of url
         project_name = self.config.tracking_url.split('=')[-1]
 
-        # Get last modification date
-        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at').only(
-            'updated_at').first()
-
-        # If an issue was found, we just collect data which was updated since the last issue
-        if last_issue is not None:
-            starting_date = last_issue.updated_at
-            query = "project=%s and updatedDate > '%s' ORDER BY updatedDate ASC" % (
-                project_name,
-                starting_date.strftime('%Y/%m/%d %H:%M')
-            )
-        else:
-            query = "project=%s ORDER BY updatedDate ASC" % project_name
+        query = "project=%s ORDER BY updatedDate ASC" % project_name
 
         return query
 
@@ -221,12 +256,12 @@ class JiraBackend(BaseBackend):
         mongo_issue = self._store_jira_issue(jira_issue)
 
         # Store events
-        self._store_events(jira_issue, mongo_issue.id)
+        self._store_events(jira_issue, mongo_issue)
 
         # Store comments
-        self._store_comments(jira_issue, mongo_issue.id)
+        self._store_comments(jira_issue, mongo_issue)
 
-    def _store_comments(self, jira_issue, mongo_issue_id):
+    def _store_comments(self, jira_issue, mongo_issue):
         """
         Processes the comments from an jira issue
 
@@ -240,26 +275,27 @@ class JiraBackend(BaseBackend):
         logger.info('Processing %d comments...' % len(jira_issue.fields.comment.comments))
         for comment in jira_issue.fields.comment.comments:
             logger.debug('Processing comment: %s' % comment)
-            created_at = dateutil.parser.parse(comment.created)
-            try:
-                mongo_comment = IssueComment.objects(external_id=comment.id, issue_id=mongo_issue_id).get()
-                logger.debug('Comment already in database, id: %s' % mongo_comment.id)
-                continue
-            except DoesNotExist:
-                mongo_comment = IssueComment(
-                    external_id=comment.id,
-                    issue_id=mongo_issue_id,
-                    created_at=created_at,
-                    author_id=self._get_people(comment.author.name, self._get_user_email(comment.author),
-                                               comment.author.displayName),
-                    comment=comment.body,
-                )
-                logger.debug('Resulting comment: %s' % mongo_comment)
-                comments_to_insert.append(mongo_comment)
+            created_at = dateutil.parser.parse(comment.created).replace(tzinfo=None)
+            mongo_comment = None
+            if mongo_issue:
+                try:
+                    mongo_comment = IssueComment.objects(external_id=comment.id, issue_id=mongo_issue.id).get()
+                    logger.debug('Comment already in database, id: %s' % mongo_comment.id)
+                except DoesNotExist:
+                    mongo_comment = None
+            new_comment = IssueComment(
+                external_id=comment.id,
+                created_at=created_at,
+                author_id=self._get_people(comment.author.name, self._get_user_email(comment.author),
+                                           comment.author.displayName),
+                comment=comment.body,
+            )
+            logger.debug('Resulting comment: %s' % new_comment)
 
-        # If comments need to be inserted -> bulk insert
-        if comments_to_insert:
-            IssueComment.objects.insert(comments_to_insert, load_bulk=False)
+            if self.issue_id not in self.parsed_issues['comments']:
+                self.parsed_issues['comments'][self.issue_id] = {}
+            self.parsed_issues['comments'][self.issue_id][comment.id] = new_comment
+            self.check_diff_comment_event(mongo_comment, new_comment)
 
     def _store_jira_issue(self, jira_issue):
         """
@@ -267,15 +303,15 @@ class JiraBackend(BaseBackend):
 
         :param jira_issue: original jira issue, like we got it from the Jira API
         """
+        self.issue_id = jira_issue.key
         try:
             # We can not return here, as the issue might be updated. This means, that the title could be updated
             # as well as comments and new events
-            mongo_issue = Issue.objects(issue_system_id=self.issue_system_id, external_id=jira_issue.key).get()
+            mongo_issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=self.issue_id).get()
+            self.old_issues['issues'][self.issue_id] = mongo_issue
         except DoesNotExist:
-            mongo_issue = Issue(
-                issue_system_id=self.issue_system_id,
-                external_id=jira_issue.key,
-            )
+            mongo_issue = None
+        new_issue = Issue(issue_system_ids=[self.issue_system_id], external_id=jira_issue.key)
 
         for at_name_jira, at_name_mongo in self.jira_mongo_terminology_mapping.items():
             # If the attribute is in the rest response set it
@@ -295,10 +331,10 @@ class JiraBackend(BaseBackend):
                                 new_issue_links.append(issue_link)
                     setattr(jira_issue_fields, 'issuelinks', new_issue_links)
 
-                if isinstance(getattr(mongo_issue, at_name_mongo), list):
+                if isinstance(getattr(new_issue, at_name_mongo), list):
                     # Get the result and the current value and merge it together
                     result = self._parse_jira_field(jira_issue_fields, at_name_jira)
-                    current_value = getattr(mongo_issue, at_name_mongo, list())
+                    current_value = getattr(new_issue, at_name_mongo, list())
                     if not isinstance(result, list):
                         result = [result]
 
@@ -310,11 +346,13 @@ class JiraBackend(BaseBackend):
                         current_value = list(set(current_value))
 
                     # Set the attribute
-                    setattr(mongo_issue, at_name_mongo, copy.deepcopy(current_value))
+                    setattr(new_issue, at_name_mongo, copy.deepcopy(current_value))
                 else:
-                    setattr(mongo_issue, at_name_mongo, self._parse_jira_field(jira_issue_fields, at_name_jira))
+                    setattr(new_issue, at_name_mongo, self._parse_jira_field(jira_issue_fields, at_name_jira))
 
-        return mongo_issue.save()
+        self.parsed_issues['issues'][self.issue_id] = new_issue
+        self.check_diff_issue(mongo_issue, new_issue)
+        return mongo_issue
 
     def _parse_jira_field(self, jira_issue_fields, at_name_jira):
         """
@@ -368,7 +406,7 @@ class JiraBackend(BaseBackend):
         :param jira_issue_fields: fields of the original jira issue
         :param at_name_jira: attribute name that should be returned
         """
-        return dateutil.parser.parse(getattr(jira_issue_fields, at_name_jira))
+        return dateutil.parser.parse(getattr(jira_issue_fields, at_name_jira)).replace(tzinfo=None)
 
     def _parse_parent_issue(self, jira_issue_fields, at_name_jira):
         """
@@ -377,7 +415,7 @@ class JiraBackend(BaseBackend):
         :param jira_issue_fields: fields of the original jira issue
         :param at_name_jira: attribute name that should be returned
         """
-        return self._get_issue_id_by_system_id(jira_issue_fields.parent.key)
+        return jira_issue_fields.parent.key
 
     def _parse_author_details(self, jira_issue_fields, at_name_jira):
         """
@@ -418,16 +456,17 @@ class JiraBackend(BaseBackend):
         links = []
         for issue_link in getattr(jira_issue_fields, at_name_jira):
             if hasattr(issue_link, 'outwardIssue'):
-                issue_id = self._get_issue_id_by_system_id(issue_link.outwardIssue.key)
+                issue_id = issue_link.outwardIssue.key
                 issue_type, issue_effect = self._get_issue_link_type_and_effect(issue_link.type.outward)
             else:
-                issue_id = self._get_issue_id_by_system_id(issue_link.inwardIssue.key)
+                issue_id = issue_link.inwardIssue.key
                 issue_type, issue_effect = self._get_issue_link_type_and_effect(issue_link.type.inward)
 
             links.append({'issue_id': issue_id, 'type': issue_type, 'effect': issue_effect})
         return links
 
-    def _get_issue_link_type_and_effect(self, msg_string):
+    @staticmethod
+    def _get_issue_link_type_and_effect(msg_string):
         """
         Gets the correct issue link type and effect from a message
 
@@ -483,26 +522,6 @@ class JiraBackend(BaseBackend):
             logger.warning("Could not find issue type and effect of string %s" % msg_string)
             return None, None
 
-    def _get_issue_id_by_system_id(self, system_id, refresh_key=False):
-        """
-        Gets the issue id like it is stored in the mongodb for a system id (like the id that was assigned by jira to
-        the issue)
-
-
-        :param system_id: id of the issue like it was assigned by jira
-        :param refresh_key: if set to true, jira is contacted to get the newest system id for this issue
-        :return:
-        """
-        if refresh_key:
-            system_id = self._get_newest_key_for_issue(system_id)
-
-        try:
-            issue_id = Issue.objects(issue_system_id=self.issue_system_id, external_id=system_id).only('id').get().id
-        except DoesNotExist:
-            issue_id = Issue(issue_system_id=self.issue_system_id, external_id=system_id).save().id
-
-        return issue_id
-
     def _get_newest_key_for_issue(self, old_key):
         """
         Gets the newes key for an issue. We query the saved issue and access it via our jira connection.
@@ -520,14 +539,14 @@ class JiraBackend(BaseBackend):
             # Can happen as issue may be deleted
             return old_key
 
-    def _store_events(self, jira_issue, mongo_issue_id):
+    def _store_events(self, jira_issue, mongo_issue):
         # Go through history of jira issue
         # We go thorugh from newest to oldest
         # If we find an issue that is already stored -> return
 
         for history in reversed(jira_issue.changelog.histories):
             i = 0
-            created_at = dateutil.parser.parse(history.created)
+            created_at = dateutil.parser.parse(history.created).replace(tzinfo=None)
 
             # It can happen that an event does not have an author (e.g., ZOOKEEPER-2218)
             author_id = None
@@ -539,13 +558,11 @@ class JiraBackend(BaseBackend):
                 logger.debug('Processing changelog entry: %s' % vars(jira_event))
 
                 unique_event_id = str(history.id) + "%%" + str(i)
-                already_stored = self._store_event(jira_event, unique_event_id, author_id, created_at, mongo_issue_id)
-                if already_stored:
-                    return
+                self._store_event(jira_event, unique_event_id, author_id, created_at, mongo_issue)
 
                 i += 1
 
-    def _store_event(self, jira_event, unique_event_id, author_id, created_at, mongo_issue_id):
+    def _store_event(self, jira_event, unique_event_id, author_id, created_at, mongo_issue):
         """
         Stores the given jira event
 
@@ -553,7 +570,7 @@ class JiraBackend(BaseBackend):
         :param unique_event_id: unique identifier of this event
         :param author_id: author that authored this event
         :param created_at: creation date
-        :param mongo_issue_id: issue to which this event is connected
+        :param mongo_issue: issue to which this event is connected
         """
         terminology_mapping = {
             'Component': 'components',
@@ -565,16 +582,18 @@ class JiraBackend(BaseBackend):
         }
 
         # If the try block succeeds, the event already exist in the database
-        try:
-            Event.objects(external_id=unique_event_id, issue_id=mongo_issue_id).get()
-            return True
-        except DoesNotExist:
-            mongo_event = Event(
-                external_id=unique_event_id,
-                issue_id=mongo_issue_id,
-                created_at=created_at,
-                author_id=author_id,
-            )
+        mongo_event = None
+        if mongo_issue:
+            try:
+               mongo_event = IssueEvent.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
+            except DoesNotExist:
+                mongo_event = None
+
+        new_event = IssueEvent(
+            external_id=unique_event_id,
+            created_at=created_at,
+            author_id=author_id,
+        )
 
         # We need to map the terminology from the histories in jira to the terminology that
         # is used when querying an issue
@@ -586,48 +605,50 @@ class JiraBackend(BaseBackend):
 
         # Map jira terminology to our terminology
         try:
-            mongo_event.status = self.jira_mongo_terminology_mapping[jira_at_name]
+            new_event.status = self.jira_mongo_terminology_mapping[jira_at_name]
         except KeyError:
             logger.warning('Mapping for attribute %s not found.' % jira_at_name)
-            mongo_event.status = jira_at_name
+            new_event.status = jira_at_name
 
-        if mongo_event.status == 'assignee_id':
+        if new_event.status == 'assignee_id':
             if getattr(jira_event, 'from') is not None:
                 people_id = self._get_people(getattr(jira_event, 'from'))
-                mongo_event.old_value = people_id
+                new_event.old_value = people_id
             if jira_event.to is not None:
                 people_id = self._get_people(jira_event.to)
-                mongo_event.new_value = people_id
-        elif mongo_event.status == 'parent_issue_id':
+                new_event.new_value = people_id
+        elif new_event.status == 'parent_issue_id':
             if getattr(jira_event, 'from') is not None:
-                issue_id = self._get_issue_id_by_system_id(jira_event.fromString)
-                mongo_event.old_value = issue_id
+                issue_id = jira_event.fromString
+                new_event.old_value = issue_id
             if jira_event.to is not None:
-                issue_id = self._get_issue_id_by_system_id(jira_event.toString)
-                mongo_event.new_value = issue_id
-        elif mongo_event.status == 'issue_links':
+                issue_id = jira_event.toString
+                new_event.new_value = issue_id
+        elif new_event.status == 'issue_links':
 
             if getattr(jira_event, 'from') is not None:
                 issue_type, issue_effect = self._get_issue_link_type_and_effect(jira_event.fromString)
-                issue_id = self._get_issue_id_by_system_id(getattr(jira_event, 'from'))
-                mongo_event.old_value = {'issue_id': issue_id, 'type': issue_type, 'effect': issue_effect}
+                issue_id = getattr(jira_event, 'from')
+                new_event.old_value = {'issue_id': issue_id, 'type': issue_type, 'effect': issue_effect}
             if jira_event.to is not None:
                 issue_type, issue_effect = self._get_issue_link_type_and_effect(jira_event.toString)
-                issue_id = self._get_issue_id_by_system_id(jira_event.to)
-                mongo_event.new_value = {'issue_id': issue_id, 'type': issue_type, 'effect': issue_effect}
-        elif mongo_event.status == 'original_time_estimate':
+                issue_id = jira_event.to
+                new_event.new_value = {'issue_id': issue_id, 'type': issue_type, 'effect': issue_effect}
+        elif new_event.status == 'original_time_estimate':
             if getattr(jira_event, 'from') is not None:
-                mongo_event.old_value = int(jira_event.fromString)
+                new_event.old_value = int(jira_event.fromString)
 
             if jira_event.to is not None:
-                mongo_event.new_value = int(jira_event.toString)
+                new_event.new_value = int(jira_event.toString)
 
         else:
-            mongo_event.new_value = getattr(jira_event, 'toString')
-            mongo_event.old_value = getattr(jira_event, 'fromString')
+            new_event.new_value = getattr(jira_event, 'toString')
+            new_event.old_value = getattr(jira_event, 'fromString')
 
-        mongo_event.save()
-        return False
+        if self.issue_id not in self.parsed_issues['events']:
+            self.parsed_issues['events'][self.issue_id] = {}
+        self.parsed_issues['events'][self.issue_id][unique_event_id] = new_event
+        self.check_diff_comment_event(mongo_event, new_event)
 
     def _get_people(self, username, email=None, name=None):
         """
@@ -689,3 +710,25 @@ class JiraBackend(BaseBackend):
         if hasattr(user, 'emailAddress'):
             email = user.emailAddress
         return email
+
+    def _get_issue_id_by_external_id(self, external_id):
+        """
+        Gets the issue by their id that was assigned by the bugzilla ITS
+        :param external_id: id of the issue in the bugzilla ITS
+        """
+        issue_id = None
+        try:
+            issue_id = Issue.objects(issue_system_ids=self.issue_system_id, external_id=str(external_id)).only(
+                'id').get().id
+        except DoesNotExist:
+            pass
+        if not issue_id:
+            try:
+                issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=str(external_id)).get()
+                issue.issue_system_ids.append(self.issue_system_id)
+                issue.save()
+                issue_id = issue.id
+            except DoesNotExist:
+                issue_id = Issue(issue_system_ids=[self.issue_system_id], external_id=str(external_id)).save().id
+
+        return issue_id
