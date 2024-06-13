@@ -1,13 +1,13 @@
+import datetime
 import logging
+import sys
 import timeit
 
-import sys
-
-import datetime
 from mongoengine import connect, DoesNotExist
-from issueshark.backends.basebackend import BaseBackend
 from pycoshark.mongomodels import Project, IssueSystem
 from pycoshark.utils import create_mongodb_uri_string
+
+from issueshark.backends.basebackend import BaseBackend
 
 logger = logging.getLogger("main")
 
@@ -27,6 +27,7 @@ class IssueSHARK(object):
 
     5. Calls :func:`~issueshark.backends.basebackend.BaseBackend.process` on the found backend
     """
+
     def __init__(self):
         pass
 
@@ -68,4 +69,3 @@ class IssueSHARK(object):
 
         elapsed = timeit.default_timer() - start_time
         logger.info("Execution time: %0.5f s" % elapsed)
-

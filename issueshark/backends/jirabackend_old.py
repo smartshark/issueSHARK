@@ -1,19 +1,15 @@
 import copy
+import logging
+import sys
+import time
+from urllib.parse import urlparse, quote_plus
 
 import dateutil
-import sys
-
-import time
-from mongoengine import DoesNotExist
-
-from issueshark.backends.basebackend import BaseBackend
-from urllib.parse import urlparse, quote_plus
 from jira import JIRA, JIRAError
-
-import logging
-
+from mongoengine import DoesNotExist
 from pycoshark.mongomodels import *
 
+from issueshark.backends.basebackend import BaseBackend
 
 logger = logging.getLogger('backend')
 
@@ -29,6 +25,7 @@ class JiraBackend(BaseBackend):
     """
     Backend that collects data via the JIRA API
     """
+
     @property
     def identifier(self):
         """
@@ -54,25 +51,25 @@ class JiraBackend(BaseBackend):
         self.jira_client = None
 
         self.at_mapping = {
-            'summary': 'title',
-            'description': 'desc',
-            'created': 'created_at',
-            'updated': 'updated_at',
-            'creator': 'creator_id',
-            'reporter': 'reporter_id',
-            'issuetype': 'issue_type',
-            'priority': 'priority',
-            'status': 'status',
-            'versions': 'affects_versions',
-            'components': 'components',
-            'labels': 'labels',
-            'resolution': 'resolution',
-            'fixVersions': 'fix_versions',
-            'assignee': 'assignee_id',
-            'issuelinks': 'issue_links',
-            'parent': 'parent_issue_id',
+            'summary'             : 'title',
+            'description'         : 'desc',
+            'created'             : 'created_at',
+            'updated'             : 'updated_at',
+            'creator'             : 'creator_id',
+            'reporter'            : 'reporter_id',
+            'issuetype'           : 'issue_type',
+            'priority'            : 'priority',
+            'status'              : 'status',
+            'versions'            : 'affects_versions',
+            'components'          : 'components',
+            'labels'              : 'labels',
+            'resolution'          : 'resolution',
+            'fixVersions'         : 'fix_versions',
+            'assignee'            : 'assignee_id',
+            'issuelinks'          : 'issue_links',
+            'parent'              : 'parent_issue_id',
             'timeoriginalestimate': 'original_time_estimate',
-            'environment': 'environment'
+            'environment'         : 'environment'
         }
 
     def process(self):
@@ -98,21 +95,22 @@ class JiraBackend(BaseBackend):
 
         # We need to add the original server (e.g. https://issues.apache.org)
         options = {
-            'server': parsed_url.scheme+"://"+parsed_url.netloc,
+            'server': parsed_url.scheme + "://" + parsed_url.netloc,
         }
 
         # If the path does not start with /rest, meaning there is something in between (e.g. "/jira"), we need
         # to add that to the server
         # TODO only works for one path part
         if not parsed_url.path.startswith('/rest'):
-            options['server'] = options['server']+'/'+parsed_url.path.split('/')[1]
+            options['server'] = options['server'] + '/' + parsed_url.path.split('/')[1]
 
         # Connect to jira
         self.jira_client = JIRA(options, basic_auth=(self.config.issue_user, self.config.issue_password),
-                    proxies=self.config.get_proxy_dictionary())
+                                proxies=self.config.get_proxy_dictionary())
 
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at').only('updated_at').first()
+        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at').only(
+            'updated_at').first()
         if last_issue is not None:
             starting_date = last_issue.updated_at
             query = "project=%s and updatedDate > '%s' ORDER BY createdDate ASC" % (
@@ -126,7 +124,7 @@ class JiraBackend(BaseBackend):
         issues = self.jira_client.search_issues(query, startAt=0, maxResults=50, fields='summary')
         logger.debug('Found %d issues via url %s' % (len(issues),
                                                      self.jira_client._get_url('search?jql=%s&startAt=0&maxResults=50' %
-                                                                                quote_plus(query))))
+                                                                               quote_plus(query))))
 
         # If no new bugs found, return
         if len(issues) == 0:
@@ -144,7 +142,7 @@ class JiraBackend(BaseBackend):
             issues = self.jira_client.search_issues(query, startAt=processed_results, maxResults=50, fields='summary')
             logger.debug('Found %d issues via url %s' %
                          (len(issues), self.jira_client._get_url('search?jql=%s&startAt=%d&maxResults=50' %
-                                                                (quote_plus(query), processed_results))))
+                                                                 (quote_plus(query), processed_results))))
             processed_results += 50
 
     def _transform_jira_issue(self, jira_issue):
@@ -195,25 +193,25 @@ class JiraBackend(BaseBackend):
         :param at_name_jira: attribute name that should be returned
         """
         field_mapping = {
-            'summary': self._parse_string_field,
-            'description': self._parse_string_field,
-            'created': self._parse_date_field,
-            'updated': self._parse_date_field,
-            'creator': self._parse_author_details,
-            'reporter': self._parse_author_details,
-            'issuetype': self._parse_string_field,
-            'priority': self._parse_string_field,
-            'status': self._parse_string_field,
-            'versions': self._parse_array_field,
-            'components': self._parse_array_field,
-            'labels': self._parse_array_field,
-            'resolution': self._parse_string_field,
-            'fixVersions': self._parse_array_field,
-            'assignee': self._parse_author_details,
-            'issuelinks': self._parse_issue_links,
-            'parent': self._parse_parent_issue,
+            'summary'             : self._parse_string_field,
+            'description'         : self._parse_string_field,
+            'created'             : self._parse_date_field,
+            'updated'             : self._parse_date_field,
+            'creator'             : self._parse_author_details,
+            'reporter'            : self._parse_author_details,
+            'issuetype'           : self._parse_string_field,
+            'priority'            : self._parse_string_field,
+            'status'              : self._parse_string_field,
+            'versions'            : self._parse_array_field,
+            'components'          : self._parse_array_field,
+            'labels'              : self._parse_array_field,
+            'resolution'          : self._parse_string_field,
+            'fixVersions'         : self._parse_array_field,
+            'assignee'            : self._parse_author_details,
+            'issuelinks'          : self._parse_issue_links,
+            'parent'              : self._parse_parent_issue,
             'timeoriginalestimate': self._parse_string_field,
-            'environment': self._parse_string_field
+            'environment'         : self._parse_string_field
         }
 
         correct_function = field_mapping.get(at_name_jira)
@@ -335,7 +333,8 @@ class JiraBackend(BaseBackend):
             return
 
         logger.debug('Processing issue %s via url %s' % (issue,
-                                                         self.jira_client._get_url('issue/%s?expand=changelog' % issue)))
+                                                         self.jira_client._get_url(
+                                                             'issue/%s?expand=changelog' % issue)))
         logger.debug('Got fields: %s' % vars(issue.fields))
 
         # Transform jira issue to mongo issue
@@ -356,7 +355,7 @@ class JiraBackend(BaseBackend):
                                              email=history.author.emailAddress)
 
             for jira_event in reversed(history.items):
-                unique_event_id = str(history.id)+"%%"+str(i)
+                unique_event_id = str(history.id) + "%%" + str(i)
                 logger.debug('Processing changelog entry: %s' % vars(jira_event))
 
                 # Create event list
@@ -448,21 +447,21 @@ class JiraBackend(BaseBackend):
         :param jira_event: original event that was acquired by the jira api
         """
         function_mapping = {
-            'title': self._set_back_string_field,
-            'desc': self._set_back_string_field,
-            'issue_type': self._set_back_string_field,
-            'priority': self._set_back_string_field,
-            'status': self._set_back_string_field,
-            'affects_versions': self._set_back_array_field,
-            'components': self._set_back_array_field,
-            'labels': self._set_back_labels,
-            'resolution': self._set_back_string_field,
-            'fix_versions': self._set_back_array_field,
-            'assignee_id': self._set_back_assignee,
-            'issue_links': self._set_back_issue_links,
-            'parent_issue_id': self._set_back_parent_id,
+            'title'                 : self._set_back_string_field,
+            'desc'                  : self._set_back_string_field,
+            'issue_type'            : self._set_back_string_field,
+            'priority'              : self._set_back_string_field,
+            'status'                : self._set_back_string_field,
+            'affects_versions'      : self._set_back_array_field,
+            'components'            : self._set_back_array_field,
+            'labels'                : self._set_back_labels,
+            'resolution'            : self._set_back_string_field,
+            'fix_versions'          : self._set_back_array_field,
+            'assignee_id'           : self._set_back_assignee,
+            'issue_links'           : self._set_back_issue_links,
+            'parent_issue_id'       : self._set_back_parent_id,
             'original_time_estimate': self._set_back_string_field,
-            'environment': self._set_back_string_field,
+            'environment'           : self._set_back_string_field,
         }
 
         correct_function = function_mapping[mongo_at_name]
@@ -570,7 +569,7 @@ class JiraBackend(BaseBackend):
             found_index = 0
             for stored_issue in item_list:
                 if stored_issue['issue_id'] == issue_id and stored_issue['effect'].lower() == link_effect.lower() and \
-                                stored_issue['type'].lower() == link_type.lower():
+                        stored_issue['type'].lower() == link_type.lower():
                     break
                 found_index += 1
 
@@ -581,7 +580,7 @@ class JiraBackend(BaseBackend):
                     getattr(jira_event, 'toString'),
                     getattr(jira_event, 'to'),
                     mongo_issue)
-                )
+                               )
 
         # Everything that was before, must be added
         if getattr(jira_event, 'from'):
@@ -668,12 +667,12 @@ class JiraBackend(BaseBackend):
         :param mongo_issue: issue that conforms to our issue model
         """
         terminology_mapping = {
-            'Component': 'components',
-            'Link': 'issuelinks',
+            'Component'  : 'components',
+            'Link'       : 'issuelinks',
             'Fix Version': 'fixVersions',
-            'Version': 'versions',
-            'Labels': 'labels',
-            'Parent': 'parent'
+            'Version'    : 'versions',
+            'Labels'     : 'labels',
+            'Parent'     : 'parent'
         }
 
         is_new_event = True

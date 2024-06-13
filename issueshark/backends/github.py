@@ -1,19 +1,16 @@
+import datetime
+import logging
+import sys
 import time
 
-import sys
-import datetime
-import copy
-
+import dateutil.parser
+import requests
 from mongoengine import DoesNotExist
+from pycoshark.mongomodels import *
 from requests import RequestException
 from requests.auth import HTTPBasicAuth
 
 from issueshark.backends.basebackend import BaseBackend
-import logging
-import requests
-import dateutil.parser
-
-from pycoshark.mongomodels import *
 
 logger = logging.getLogger('backend')
 STATE_ALL = 'all'
@@ -32,6 +29,7 @@ class GithubBackend(BaseBackend):
     """
     Backend that collects issue from github
     """
+
     @property
     def identifier(self):
         """
@@ -69,7 +67,8 @@ class GithubBackend(BaseBackend):
         logger.info("Starting the collection process...")
 
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at').only('updated_at').first()
+        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at').only(
+            'updated_at').first()
         starting_date = None
         if last_issue is not None:
             starting_date = last_issue.updated_at
@@ -105,7 +104,7 @@ class GithubBackend(BaseBackend):
 
         :param raw_issue: like we got it from github
         """
-        logger.debug('Processing issue %s' % raw_issue)
+        logger.debug('Processing issue %s' % raw_issue["url"])
         updated_at = dateutil.parser.parse(raw_issue['updated_at'])
         created_at = dateutil.parser.parse(raw_issue['created_at'])
 
@@ -151,38 +150,42 @@ class GithubBackend(BaseBackend):
         target_url = '%s/%s/events' % (self.config.tracking_url, system_id)
         events = self._send_request(target_url)
 
-        # Go through all events and create mongo objects from it
         events_to_store = []
-        for raw_event in events:
-            created_at = dateutil.parser.parse(raw_event['created_at'])
 
-            # If the event is already saved, we can just continue, because nothing will change on the event
-            try:
-                Event.objects(external_id=raw_event['id'], issue_id=mongo_issue.id).get()
-                continue
-            except DoesNotExist:
-                event = Event(external_id=raw_event['id'],
-                              issue_id=mongo_issue.id, created_at=created_at, status=raw_event['event'])
+        # Go through all events and create mongo objects from it
+        try:
+            for raw_event in events:
+                created_at = dateutil.parser.parse(raw_event['created_at'])
 
-            if raw_event['commit_id'] is not None:
-                # It can happen that a commit from another repository references this issue. Therefore, we can not
-                # find the commit, as it is not part of THIS repository
+                # If the event is already saved, we can just continue, because nothing will change on the event
                 try:
-                    vcs_system_ids = [system.id for system in
-                                      VCSSystem.objects(project_id=self.project_id).only('id').all()]
-
-                    event.commit_id = Commit.objects(vcs_system_id__in=vcs_system_ids,
-                                                 revision_hash=raw_event['commit_id']).only('id').get().id
+                    Event.objects(external_id=raw_event['id'], issue_id=mongo_issue.id).get()
+                    continue
                 except DoesNotExist:
-                    pass
+                    event = Event(external_id=raw_event['id'],
+                                  issue_id=mongo_issue.id, created_at=created_at, status=raw_event['event'])
 
-            if 'actor' in raw_event and raw_event['actor'] is not None:
-                event.author_id = self._get_people(raw_event['actor']['url'])
+                if raw_event['commit_id'] is not None:
+                    # It can happen that a commit from another repository references this issue. Therefore, we can not
+                    # find the commit, as it is not part of THIS repository
+                    try:
+                        vcs_system_ids = [system.id for system in
+                                          VCSSystem.objects(project_id=self.project_id).only('id').all()]
 
-            self._set_old_and_new_value_for_event(event, raw_event, mongo_issue)
-            mongo_issue.save()
+                        event.commit_id = Commit.objects(vcs_system_id__in=vcs_system_ids,
+                                                         revision_hash=raw_event['commit_id']).only('id').get().id
+                    except DoesNotExist:
+                        pass
 
-            events_to_store.append(event)
+                if 'actor' in raw_event and raw_event['actor'] is not None:
+                    event.author_id = self._get_people(raw_event['actor']['url'])
+
+                self._set_old_and_new_value_for_event(event, raw_event, mongo_issue)
+                mongo_issue.save()
+
+                events_to_store.append(event)
+        except TypeError:
+            logger.debug("Not storing events for %s." % target_url)
 
         # Bulk insert to database
         if events_to_store:
@@ -200,15 +203,14 @@ class GithubBackend(BaseBackend):
             if 'assignee' in raw_event and raw_event['assignee'] is not None:
                 event.new_value = self._get_people(raw_event['assignee']['url'])
 
-
-            #if 'assigner' in raw_event and raw_event['assigner'] is not None:
+            # if 'assigner' in raw_event and raw_event['assigner'] is not None:
             #    event.assigner_id = self._get_people(raw_event['assigner']['url'])
 
         if raw_event['event'] == 'unassigned':
             if 'assignee' in raw_event and raw_event['assignee'] is not None:
                 event.old_value = self._get_people(raw_event['assignee']['url'])
 
-            #if 'assigner' in raw_event and raw_event['assigner'] is not None:
+            # if 'assigner' in raw_event and raw_event['assigner'] is not None:
             #    event.assigner_id = self._get_people(raw_event['assigner']['url'])
 
         if raw_event['event'] == 'labeled' and 'label' in raw_event:
@@ -272,7 +274,7 @@ class GithubBackend(BaseBackend):
         """
         # Creates the target url for getting the issues
         target_url = self.config.tracking_url + "?state=" + search_state + "&page=" + str(pagecount) \
-            + "&per_page=100&sort=updated&direction=" + sorting
+                     + "&per_page=100&sort=updated&direction=" + sorting
 
         if start_date:
             target_url = target_url + "&since=" + str(start_date)
@@ -282,7 +284,7 @@ class GithubBackend(BaseBackend):
 
     def _get_people(self, user_url):
         """
-        Gets the person via the user url
+        Gets the person via the user url.
 
         :param user_url: url to the github API to get information of the user
         """
@@ -309,7 +311,10 @@ class GithubBackend(BaseBackend):
 
     def _send_request(self, url):
         """
-        Sends arequest using the requests library to the url specified
+        Sends a request using the requests library to the url specified.
+
+        NOTE: In case, the issue to be fetched has been deleted and if the events process requests fails,
+              its events would be skipped.
 
         :param url: url to which the request should be sent
         """
@@ -326,7 +331,15 @@ class GithubBackend(BaseBackend):
         tries = 1
         while tries <= 3:
             logger.debug("Sending request to url: %s (Try: %s)" % (url, tries))
-            resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
+            try:
+                resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
+            except requests.exceptions.ConnectionError:
+                time.sleep(2)
+                try:
+                    resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
+                except requests.exceptions.ConnectionError:
+                    logger.error("Connection Error while fetching data from url %s." % url)
+                    break
 
             if resp.status_code != 200:
                 logger.error("Problem with getting data via url %s. Error: %s" % (url, resp.text))
@@ -335,22 +348,28 @@ class GithubBackend(BaseBackend):
             else:
                 # It can happen that we exceed the github api limit. If we have only 1 request left we will wait
                 if 'X-RateLimit-Remaining' in resp.headers and int(resp.headers['X-RateLimit-Remaining']) <= 1:
-
                     # We get the reset time (UTC Epoch seconds)
                     time_when_reset = datetime.datetime.fromtimestamp(float(resp.headers['X-RateLimit-Reset']))
                     now = datetime.datetime.now()
 
-                    # Then we substract and add 10 seconds to it (so that we do not request directly at the threshold
-                    waiting_time = ((time_when_reset-now).total_seconds())+10
+                    # Then we subtract and add 10 seconds to it (so that we do not request directly at the threshold
+                    waiting_time = ((time_when_reset - now).total_seconds()) + 10
 
                     logger.info("Github API limit exceeded. Waiting for %0.5f seconds..." % waiting_time)
                     time.sleep(waiting_time)
 
                     resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
 
-                logger.debug('Got response: %s' % resp.json())
+                    try:
+                        logger.debug(
+                            'Got response: Issue-%s' % resp.json()[0]["url"] if isinstance(resp.json(), list) else
+                            resp.json()["url"])
+                    except IndexError:
+                        pass
 
                 return resp.json()
 
-        raise RequestException("Problem with getting data via url %s." % url)
-
+        if "events" in url:
+            return None
+        else:
+            raise RequestException("Problem with getting data via url %s." % url)
