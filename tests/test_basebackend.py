@@ -43,14 +43,14 @@ class BaseBackendTest(unittest.TestCase):
     def test_find_fitting_backend_github(self):
         config = ConfigMock(None, None, None, None, None, None, None, None, 'github', None, None, None, None, None,
                             None, None, None)
-        self.assertEqual('GithubBackend', type(BaseBackend.find_fitting_backend(config, None, None)).__name__)
+        self.assertEqual('GithubBackend', type(BaseBackend.find_fitting_backend(config, None, None, None)).__name__)
 
     def test_find_fitting_backend_jira(self):
         config = ConfigMock(None, None, None, None, None, None, None, None, 'jira', None, None, None, None, None,
                             None, None, None)
-        self.assertEqual('JiraBackend', type(BaseBackend.find_fitting_backend(config, None, None)).__name__)
+        self.assertEqual('JiraBackend', type(BaseBackend.find_fitting_backend(config, None, None, None)).__name__)
 
     def test_find_fitting_backend_bugzilla(self):
         config = ConfigMock(None, None, None, None, None, None, None, None, 'bugzilla', None, None, None, None, None,
                             None, None, None)
-        self.assertEqual('BugzillaBackend', type(BaseBackend.find_fitting_backend(config, None, None)).__name__)
+        self.assertEqual('BugzillaBackend', type(BaseBackend.find_fitting_backend(config, None, None, None)).__name__)

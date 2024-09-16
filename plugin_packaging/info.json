@@ -7,27 +7,22 @@
     ],
     "created_collections": [
 		{
-			"name": "issue_system",
-			"shard_key": [{"url": "hashed"}]
+			"name": "issue_system"
 		},
         {
 			"name": "issue",
-			"shard_key": [{"external_id": 1}, {"issue_system_id": 1}],
             "unique": true
 		},
         {
-			"name": "event",
-			"shard_key": [{"external_id": 1}, {"issue_id": 1}],
+			"name": "issue_event",
             "unique": true
 		},
         {
 			"name": "issue_comment",
-			"shard_key": [{"external_id": 1}, {"issue_id": 1}],
             "unique": true
 		},
         {
 			"name": "people",
-			"shard_key": [{"email": 1}, {"name": 1}],
             "unique": true
 		}
 	],

@@ -36,7 +36,7 @@ class JiraBackend(BaseBackend):
         """
         return 'jiraOld'
 
-    def __init__(self, cfg, issue_system_id, project_id):
+    def __init__(self, cfg, issue_system_id, project_id, last_system_id):
         """
         Initialization
         Initializes the people dictionary see: :func:`~issueshark.backends.jirabackend.JiraBackend._get_people`
@@ -47,7 +47,7 @@ class JiraBackend(BaseBackend):
         :param issue_system_id: id of the issue system for which data should be collected. :class:`bson.objectid.ObjectId`
         :param project_id: id of the project to which the issue system belongs. :class:`bson.objectid.ObjectId`
         """
-        super().__init__(cfg, issue_system_id, project_id)
+        super().__init__(cfg, issue_system_id, project_id, last_system_id)
 
         logger.setLevel(self.debug_level)
         self.people = {}

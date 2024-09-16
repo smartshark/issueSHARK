@@ -43,7 +43,7 @@ class BugzillaAgent(object):
         if self.username is not None and self.password is None:
             raise BugzillaApiException('If a username is given, a password needs to be given too!')
 
-    def get_bug_list(self, last_change_time=None, offset=0, limit=50):
+    def get_bug_list(self, offset=0, limit=50):
         """
         Gets a list of bugs from the bugzilla API
 
@@ -57,9 +57,6 @@ class BugzillaAgent(object):
             'limit': limit,
             'order': 'creation_time%20ASC'
         }
-
-        if last_change_time is not None:
-            options['last_change_time'] = last_change_time
 
         return self._send_request('bug', options)['bugs']
 

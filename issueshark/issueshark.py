@@ -3,7 +3,7 @@ import timeit
 
 import sys
 
-import datetime
+from datetime import datetime
 from mongoengine import connect, DoesNotExist
 from issueshark.backends.basebackend import BaseBackend
 from pycoshark.mongomodels import Project, IssueSystem
@@ -52,15 +52,14 @@ class IssueSHARK(object):
             sys.exit(1)
 
         # Create issue system if not already there
-        try:
-            issue_system = IssueSystem.objects(url=cfg.tracking_url).get()
-        except DoesNotExist:
-            issue_system = IssueSystem(project_id=project_id, url=cfg.tracking_url).save()
-        issue_system.last_updated = datetime.datetime.now()
+        last_system = IssueSystem.objects.filter(project_id=project_id).order_by('-collection_date').first()
+        self.last_system_id = last_system.id if last_system else None
+
+        issue_system = IssueSystem(project_id=project_id, url=cfg.tracking_url, collection_date=datetime.now())
         issue_system.save()
 
         # Find correct backend
-        backend = BaseBackend.find_fitting_backend(cfg, issue_system.id, project_id)
+        backend = BaseBackend.find_fitting_backend(cfg, issue_system.id, project_id, self.last_system_id)
         logger.debug("Using backend: %s" % backend.identifier)
 
         # Process the issues for the corresponding project_id
