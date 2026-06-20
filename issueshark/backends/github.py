@@ -100,7 +100,7 @@ class GithubBackend(BaseBackend):
 
         :param raw_issue: like we got it from github
         """
-        logger.debug('Processing issue %s' % raw_issue)
+        # logger.debug('Processing issue %s' % raw_issue)
         updated_at = dateutil.parser.parse(raw_issue['updated_at']).replace(tzinfo=None)
         created_at = dateutil.parser.parse(raw_issue['created_at']).replace(tzinfo=None)
         self.issue_id = str(raw_issue['number'])
@@ -126,6 +126,20 @@ class GithubBackend(BaseBackend):
         new_issue.created_at = created_at
         new_issue.status = raw_issue['state']
         new_issue.labels = labels
+
+        # Convert all label strings to lowercase for bulletproof matching
+        lowercase_labels = [l.lower() for l in labels]
+
+        if 'bug' in lowercase_labels or 'defect' in lowercase_labels:
+            new_issue.issue_type = 'Bug'
+        elif 'enhancement' in lowercase_labels or 'feature' in lowercase_labels:
+            new_issue.issue_type = 'Enhancement'
+        elif 'task' in lowercase_labels:
+            new_issue.issue_type = 'Task'
+        else:
+            # Fallback to keep it from hitting None -> "other"
+            new_issue.issue_type = 'Issue' 
+            
         # github issues can be pull requests too (gitea is probably the same)
         if 'pull_request' in raw_issue.keys():
             new_issue.is_pull_request = True
@@ -336,7 +350,7 @@ class GithubBackend(BaseBackend):
 
                     resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
 
-                logger.debug('Got response: %s' % resp.json())
+                # logger.debug('Got response: %s' % resp.json())
 
                 return resp.json()
 

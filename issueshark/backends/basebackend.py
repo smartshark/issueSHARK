@@ -34,7 +34,8 @@ class BaseBackend(metaclass=abc.ABCMeta):
         self.issue_system_id = issue_system_id
         self.project_id = project_id
         self.last_system_id = last_system_id
-        self.debug_level = logging.DEBUG
+        # self.debug_level = logging.DEBUG
+        self.debug_level = logging.INFO
 
         if self.config is not None:
             self.debug_level = self.config.get_debug_level()
@@ -103,6 +104,8 @@ class BaseBackend(metaclass=abc.ABCMeta):
           Returns:
               None
           """
+        issue_count = len(self.parsed_issues['issues'])
+        logging.info("Saving %s parsed issues in total ..." % issue_count)
         for issue_id, issue in self.parsed_issues['issues'].items():
             if issue_id in self.issues_diff and self.issues_diff[issue_id]:
                 issue.save()

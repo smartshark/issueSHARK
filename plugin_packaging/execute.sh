@@ -1,6 +1,13 @@
 #!/bin/sh
 PLUGIN_PATH=${1}
 
+(cd "$1" && ./install.sh "$1")
+INSTALL_STATUS=$?
+
+[ $INSTALL_STATUS -eq 0 ] && echo "Dependencies updated successfully." || {
+    echo "install.sh exited with code $INSTALL_STATUS."
+}
+
 COMMAND="python3.5 ${1}/main.py --db-database ${4} --db-hostname ${5} --db-port ${6} --project-name ${8} --issueurl ${9} --backend ${10}"
 
 if [ ! -z ${11} ] && [ ${11} != "None" ]; then

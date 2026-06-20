@@ -36,7 +36,8 @@ class IssueSHARK(object):
 
         :param cfg: holds all configuration parameters. Object of class :class:`~issueshark.config.Config`
         """
-        logger.setLevel(cfg.get_debug_level())
+        # logger.setLevel(cfg.get_debug_level())
+        logger.setLevel(logging.INFO)
         start_time = timeit.default_timer()
 
         # Connect to mongodb
