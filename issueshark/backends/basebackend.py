@@ -116,7 +116,8 @@ class BaseBackend(metaclass=abc.ABCMeta):
                         item.issue_id = issue.id
                         item.save()
             else:
-                self.old_issues['issues'][issue_id]['issue_system_ids'].append(self.issue_system_id)
+                # self.old_issues['issues'][issue_id]['issue_system_ids'].append(self.issue_system_id)
+                self.old_issues['issues'][issue_id]['issue_system_id'].append(self.issue_system_id)
                 self.old_issues['issues'][issue_id].save()
 
     def check_diff_issue(self, old, new):
@@ -132,7 +133,8 @@ class BaseBackend(metaclass=abc.ABCMeta):
         :return: None
         """
 
-        self.check_diff(old, new, ["root['issue_system_ids']", "root['issue_links']", "root['parent_issue_id']"])
+        # self.check_diff(old, new, ["root['issue_system_ids']", "root['issue_links']", "root['parent_issue_id']"])
+        self.check_diff(old, new, ["root['issue_system_id']", "root['issue_links']", "root['parent_issue_id']"])
 
     def check_diff_comment_event(self, old, new):
         """

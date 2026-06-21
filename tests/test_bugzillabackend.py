@@ -9,7 +9,7 @@ import mock
 import mongomock
 import mongoengine
 from issueshark.backends.bugzilla import BugzillaBackend
-from pycoshark.mongomodels import IssueSystem, Project, Issue, IssueEvent, IssueComment, People
+from pycoshark.mongomodels import IssueSystem, Project, Issue, Event, IssueComment, People
 
 from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
 
@@ -86,7 +86,7 @@ class BugzillaBackendTest(unittest.TestCase):
         IssueSystem.drop_collection()
         Issue.drop_collection()
         IssueComment.drop_collection()
-        IssueEvent.drop_collection()
+        Event.drop_collection()
 
         self.project_id = Project(name='Bla').save().id
         self.issues_system_id = IssueSystem(project_id=self.project_id,
@@ -108,7 +108,8 @@ class BugzillaBackendTest(unittest.TestCase):
         creator = People.objects(email="anand@avnisoft.com").get()
         assignee = People.objects(email="notifications@ant.apache.org").get()
 
-        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        # self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
         self.assertEqual(stored_issue.title, "The \"java\" task doesn't work. BugRat Report#85")
         self.assertEqual(stored_issue.desc, "Description text")
         self.assertEqual(stored_issue.created_at, datetime.datetime(2000, 9, 7, 20, 20, 32))
@@ -206,7 +207,7 @@ class BugzillaBackendTest(unittest.TestCase):
         craig_user = People.objects(email="craig.mcclanahan@sun.com").get()
         conor_user = People.objects(email="conor@apache.org").get()
 
-        all_events = IssueEvent.objects.all()
+        all_events = Event.objects.all()
 
         self.assertEqual(16, len(all_events))
 
@@ -356,7 +357,7 @@ class BugzillaBackendTest(unittest.TestCase):
         bugzilla_backend._store_events(self.issue_95_history, self.issue_95, stored_issue)
         bugzilla_backend.save_issues()
 
-        all_events = IssueEvent.objects.all()
+        all_events = Event.objects.all()
 
         self.assertEqual(16, len(all_events))
 

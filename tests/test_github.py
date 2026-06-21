@@ -11,7 +11,7 @@ from mongoengine import connect
 import mongomock
 import mongoengine
 from issueshark.backends.github import GithubBackend
-from pycoshark.mongomodels import IssueSystem, Project, Issue, IssueEvent, IssueComment, People
+from pycoshark.mongomodels import IssueSystem, Project, Issue, Event, IssueComment, People
 
 class ConfigMock(object):
     def __init__(self, db_user, db_password, db_database, db_hostname, db_port, db_authentication, project_name,
@@ -78,7 +78,7 @@ class GithubBackendTest(unittest.TestCase):
         IssueSystem.drop_collection()
         Issue.drop_collection()
         IssueComment.drop_collection()
-        IssueEvent.drop_collection()
+        Event.drop_collection()
 
         self.project_id = Project(name='Composer').save().id
         self.issues_system_id = IssueSystem(project_id=self.project_id, url="http://blub.de",
@@ -125,7 +125,8 @@ class GithubBackendTest(unittest.TestCase):
         gh_backend.save_issues()
 
         mongo_issue = Issue.objects(external_id='6131').get()
-        self.assertEqual([self.issues_system_id], mongo_issue.issue_system_ids)
+        # self.assertEqual([self.issues_system_id], mongo_issue.issue_system_ids)
+        self.assertEqual([self.issues_system_id], mongo_issue.issue_system_id)
         self.assertEqual('Inexplainable dependency conflict', mongo_issue.title)
         self.assertEqual('Steps to reproduce:\r\n\r\nhttps://github.com/Berdir/strict-dependency-bug\r\n\r\nOutput:'
                          '\r\n\r\n```\r\nYour requirements could not be resolved to an installable set of packages.'
@@ -160,7 +161,8 @@ class GithubBackendTest(unittest.TestCase):
         gh_backend.store_issue(self.issue_6050)
         gh_backend.save_issues()
         mongo_issue = Issue.objects(external_id='6050').get()
-        self.assertEqual([self.issues_system_id], mongo_issue.issue_system_ids)
+        # self.assertEqual([self.issues_system_id], mongo_issue.issue_system_ids)
+        self.assertEqual([self.issues_system_id], mongo_issue.issue_system_id)
         self.assertEqual("Local path package does not autoload classes", mongo_issue.title)
         self.assertEqual("I'm about to write post about local packages, but there is one thing that blocks me.\r\n\r\nI "
                          "use [path local package](https://getcomposer.org/doc/05-repositories.md#path).\r\n\r\nI need "
@@ -194,7 +196,7 @@ class GithubBackendTest(unittest.TestCase):
         gh_backend._process_events(Issue.objects(external_id='6131').get())
         gh_backend._process_events(Issue.objects(external_id='6131').get())
         gh_backend.save_issues()
-        mongo_events = IssueEvent.objects.order_by('+created_at', '+external_id')
+        mongo_events = Event.objects.order_by('+created_at', '+external_id')
         self.assertEqual(6, len(mongo_events))
 
     @mock.patch('issueshark.backends.github.GithubBackend._send_request')
@@ -211,7 +213,7 @@ class GithubBackendTest(unittest.TestCase):
 
         mongo_issue = Issue.objects(external_id='6131').get()
 
-        mongo_events = IssueEvent.objects.order_by('+created_at', '+external_id')
+        mongo_events = Event.objects.order_by('+created_at', '+external_id')
         self.assertEqual(6, len(mongo_events))
 
         event = mongo_events[0]
@@ -275,7 +277,7 @@ class GithubBackendTest(unittest.TestCase):
         gh_backend.save_issues()
         mongo_issue = Issue.objects(external_id='6050').get()
 
-        mongo_events = IssueEvent.objects.order_by('+created_at', '+external_id')
+        mongo_events = Event.objects.order_by('+created_at', '+external_id')
         self.assertEqual(3, len(mongo_events))
 
         event = mongo_events[0]

@@ -12,7 +12,7 @@ import mongomock
 import mongoengine
 
 from issueshark.backends.jirabackend import JiraBackend
-from pycoshark.mongomodels import IssueSystem, Project, Issue, IssueEvent, IssueComment, People
+from pycoshark.mongomodels import IssueSystem, Project, Issue, Event, IssueComment, People
 
 
 class ConfigMock(object):
@@ -75,7 +75,7 @@ class JiraBackendTest(unittest.TestCase):
         IssueSystem.drop_collection()
         Issue.drop_collection()
         IssueComment.drop_collection()
-        IssueEvent.drop_collection()
+        Event.drop_collection()
 
         self.project_id = Project(name='Bla').save().id
         self.issues_system_id = IssueSystem(project_id=self.project_id,
@@ -110,7 +110,8 @@ class JiraBackendTest(unittest.TestCase):
         new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
 
         current_date = datetime.datetime.now()
-        Issue(issue_system_ids=[self.issues_system_id], updated_at=current_date).save()
+        # Issue(issue_system_ids=[self.issues_system_id], updated_at=current_date).save()
+        Issue(issue_system_id=self.issues_system_id, updated_at=current_date).save()
 
         self.assertEqual(
             'project=BLA ORDER BY updatedDate ASC',
@@ -133,7 +134,7 @@ class JiraBackendTest(unittest.TestCase):
         new_jira_backend._store_events(issue, stored_issue)
         new_jira_backend.save_issues()
 
-        stored_events = IssueEvent.objects(issue_id=stored_issue.id).all()
+        stored_events = Event.objects(issue_id=stored_issue.id).all()
         self.assertEqual(24, len(stored_events))
 
         jacques_user = People.objects(email="jacques@apache.org", username="jnadeau").get()
@@ -358,7 +359,7 @@ class JiraBackendTest(unittest.TestCase):
         new_jira_backend._store_events(issue, stored_issue)
         new_jira_backend.save_issues()
 
-        stored_events = IssueEvent.objects(issue_id=stored_issue.id).all()
+        stored_events = Event.objects(issue_id=stored_issue.id).all()
         self.assertEqual(7, len(stored_events))
 
     def test_store_jira_issue(self):
@@ -370,7 +371,8 @@ class JiraBackendTest(unittest.TestCase):
         stored_issue = Issue.objects(external_id='DRILL-1').get()
         creator = People.objects(email="michael.hausenblas@gmail.com").get()
 
-        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        # self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
         self.assertEqual(stored_issue.title, 'Thrift-based wire protocol')
         self.assertEqual(stored_issue.desc, 'Support a Thrift-based [1] wire protocol. Contributor: Michael Hausenblas.\r\n\r\nSee [2] for the discussion.\r\n\r\n\r\n[1] http://thrift.apache.org/\r\n[2] http://mail-archives.apache.org/mod_mbox/incubator-drill-dev/201209.mbox/%3C4C785CAB-FD0E-4C5A-8D83-7AD0B7752139%40gmail.com%3E')
         self.assertEqual(stored_issue.created_at, datetime.datetime(2012,9,5,16,34,55, 991000))
@@ -399,7 +401,8 @@ class JiraBackendTest(unittest.TestCase):
         stored_issue = Issue.objects(external_id='DRILL-138').get()
         creator = People.objects(email="altekrusejason@gmail.com").get()
 
-        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        # self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
         self.assertEqual(stored_issue.title, 'Fill basic optimizer with new Physical Operators')
         self.assertEqual(stored_issue.desc, 'As new Physical Operators are completed they must be added to the basic optimizer for logical to physical plan conversion.')
         self.assertEqual(stored_issue.created_at, datetime.datetime(2013, 7, 3, 0, 16, 13, 737000))
@@ -434,7 +437,7 @@ class JiraBackendTest(unittest.TestCase):
         creator = People.objects(email="christopherrmerrick@gmail.com", username="chrismerrick").get()
         assignee = People.objects(email="christopherrmerrick@gmail.com", username="cmerrick").get()
 
-        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
         self.assertEqual(stored_issue.title, 'Limit ROP Unit Tests')
         self.assertEqual(stored_issue.desc, None)
         self.assertEqual(stored_issue.created_at, datetime.datetime(2013, 2, 24, 2, 4, 42, 952000))
@@ -466,7 +469,8 @@ class JiraBackendTest(unittest.TestCase):
         creator = People.objects(email="christopherrmerrick@gmail.com", username="chrismerrick").get()
         assignee = People.objects(email="christopherrmerrick@gmail.com", username="cmerrick").get()
 
-        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        # self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
         self.assertEqual(stored_issue.title, 'Limit ROP Unit Tests')
         self.assertEqual(stored_issue.desc, None)
         self.assertEqual(stored_issue.created_at, datetime.datetime(2013, 2, 24, 2, 4, 42, 952000))
@@ -491,9 +495,11 @@ class JiraBackendTest(unittest.TestCase):
         new_jira_backend.issue_system_id = self.issues_system_id_after
         new_jira_backend._store_jira_issue(issue)
         new_jira_backend.save_issues()
-        stored_issue = Issue.objects(external_id='DRILL-38', issue_system_ids=self.issues_system_id_after).get()
+        # stored_issue = Issue.objects(external_id='DRILL-38', issue_system_ids=self.issues_system_id_after).get()
+        stored_issue = Issue.objects(external_id='DRILL-38', issue_system_id=self.issues_system_id_after).get()
 
-        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id_after])
+        # self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id_after])
+        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id_after)
         self.assertEqual(stored_issue.title, 'Limit ROP Unit Tests')
         self.assertEqual(stored_issue.desc, None)
         self.assertEqual(stored_issue.created_at, datetime.datetime(2013, 2, 24, 2, 4, 42, 952000))

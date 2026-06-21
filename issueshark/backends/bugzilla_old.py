@@ -9,7 +9,7 @@ from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
 from validate_email import validate_email
 import logging
 
-from pycoshark.mongomodels import Issue, People, IssueEvent, IssueComment
+from pycoshark.mongomodels import Issue, People, Event, IssueComment
 
 logger = logging.getLogger('backend')
 
@@ -156,7 +156,7 @@ class BugzillaBackend(BaseBackend):
 
         # Store events
         if events_to_insert:
-            IssueEvent.objects.insert(events_to_insert, load_bulk=False)
+            Event.objects.insert(events_to_insert, load_bulk=False)
 
         # Store comments
         self._process_comments(mongo_issue.id, comments)
@@ -212,10 +212,10 @@ class BugzillaBackend(BaseBackend):
         """
         is_new_event = True
         try:
-            mongo_event = IssueEvent.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
+            mongo_event = Event.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
             is_new_event = False
         except DoesNotExist:
-            mongo_event = IssueEvent(
+            mongo_event = Event(
                 external_id=unique_event_id,
                 issue_id=mongo_issue.id,
                 created_at=change_date,
