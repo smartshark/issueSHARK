@@ -4,12 +4,15 @@ import sys
 import logging
 from deepdiff import DeepDiff
 
+logger = logging.getLogger('backend')
+
 class BaseBackend(metaclass=abc.ABCMeta):
     """
     BaseBackend from which all backends must inherit
     """
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def identifier(self):
         """
         Identifier of the backend
@@ -104,7 +107,7 @@ class BaseBackend(metaclass=abc.ABCMeta):
               None
           """
         issue_count = len(self.parsed_issues['issues'])
-        logging.info("Saving %s parsed issues in total ..." % issue_count)
+        logger.info("Saving %s parsed issues in total ..." % issue_count)
         for issue_id, issue in self.parsed_issues['issues'].items():
             if issue_id in self.issues_diff and self.issues_diff[issue_id]:
                 issue.save()
