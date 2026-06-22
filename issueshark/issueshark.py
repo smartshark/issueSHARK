@@ -44,7 +44,9 @@ class IssueSHARK(object):
         sys.stdout = sys.stderr if '--help' in sys.argv else sys.stdout 
         logging.basicConfig(stream=sys.stdout, level=cfg.get_debug_level(), force=True)
         logging.getLogger("main").handlers = [logging.StreamHandler(sys.stdout)]
+        logging.getLogger("main").propagate = False
         logging.getLogger("backend").handlers = [logging.StreamHandler(sys.stdout)]
+        logging.getLogger("backend").propagate = False
         start_time = timeit.default_timer()
 
         # Connect to mongodb

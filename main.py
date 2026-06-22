@@ -27,6 +27,11 @@ def setup_logging(default_path=os.path.dirname(os.path.realpath(__file__))+"/log
         else:
             logging.basicConfig(level=default_level)
 
+        sys.stdout = sys.stderr if '--help' in sys.argv else sys.stdout 
+        logging.getLogger("main").handlers = [logging.StreamHandler(sys.stdout)]
+        logging.getLogger("main").propagate = False
+        logging.getLogger("backend").handlers = [logging.StreamHandler(sys.stdout)]
+        logging.getLogger("backend").propagate = False
 
 def start():
     """
@@ -34,7 +39,7 @@ def start():
     :class:`~issueshark.issueshark.IssueSHARK`
     """
     setup_logging()
-    logger = logging.getLogger("main")
+    logger = logging.getLogger('main')
     logger.info("Starting issueSHARK...")
 
     try:
