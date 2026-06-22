@@ -34,8 +34,7 @@ class BaseBackend(metaclass=abc.ABCMeta):
         self.issue_system_id = issue_system_id
         self.project_id = project_id
         self.last_system_id = last_system_id
-        # self.debug_level = logging.DEBUG
-        self.debug_level = logging.INFO
+        self.debug_level = logging.DEBUG
 
         if self.config is not None:
             self.debug_level = self.config.get_debug_level()
