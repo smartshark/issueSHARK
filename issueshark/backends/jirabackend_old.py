@@ -112,7 +112,7 @@ class JiraBackend(BaseBackend):
                     proxies=self.config.get_proxy_dictionary())
 
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at').only('updated_at').first()
+        last_issue = Issue.objects(issue_system_ids=self.issue_system_id).order_by('-updated_at').only('updated_at').first()
         if last_issue is not None:
             starting_date = last_issue.updated_at
             query = "project=%s and updatedDate > '%s' ORDER BY createdDate ASC" % (
@@ -156,10 +156,10 @@ class JiraBackend(BaseBackend):
         try:
             # We can not return here, as the issue might be updated. This means, that the title could be updated
             # as well as comments and new events
-            mongo_issue = Issue.objects(issue_system_id=self.issue_system_id, external_id=jira_issue.key).get()
+            mongo_issue = Issue.objects(issue_system_ids=self.issue_system_id, external_id=jira_issue.key).get()
         except DoesNotExist:
             mongo_issue = Issue(
-                issue_system_id=self.issue_system_id,
+                issue_system_ids=[self.issue_system_id],
                 external_id=jira_issue.key,
             )
 
@@ -379,7 +379,7 @@ class JiraBackend(BaseBackend):
 
         # Set issue_id for event list and bulk write
         if events:
-            Event.objects.insert(events, load_bulk=False)
+            IssueEvent.objects.insert(events, load_bulk=False)
 
         # Store comments of issue
         self._process_comments(issue, mongo_issue.id)
@@ -433,9 +433,9 @@ class JiraBackend(BaseBackend):
             system_id = self._get_newest_key_for_issue(system_id)
 
         try:
-            issue_id = Issue.objects(issue_system_id=self.issue_system_id, external_id=system_id).only('id').get().id
+            issue_id = Issue.objects(issue_system_ids=self.issue_system_id, external_id=system_id).only('id').get().id
         except DoesNotExist:
-            issue_id = Issue(issue_system_id=self.issue_system_id, external_id=system_id).save().id
+            issue_id = Issue(issue_system_ids=[self.issue_system_id], external_id=system_id).save().id
 
         return issue_id
 
@@ -678,10 +678,10 @@ class JiraBackend(BaseBackend):
 
         is_new_event = True
         try:
-            mongo_event = Event.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
+            mongo_event = IssueEvent.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
             is_new_event = False
         except DoesNotExist:
-            mongo_event = Event(
+            mongo_event = IssueEvent(
                 external_id=unique_event_id,
                 issue_id=mongo_issue.id,
                 created_at=created_at,

@@ -9,7 +9,7 @@ import mock
 import mongomock
 import mongoengine
 from issueshark.backends.bugzilla import BugzillaBackend
-from pycoshark.mongomodels import IssueSystem, Project, Issue, Event, IssueComment, People
+from pycoshark.mongomodels import IssueSystem, Project, Issue, IssueEvent, IssueComment, People
 
 from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
 
@@ -86,7 +86,7 @@ class BugzillaBackendTest(unittest.TestCase):
         IssueSystem.drop_collection()
         Issue.drop_collection()
         IssueComment.drop_collection()
-        Event.drop_collection()
+        IssueEvent.drop_collection()
 
         self.project_id = Project(name='Bla').save().id
         self.issues_system_id = IssueSystem(project_id=self.project_id,
@@ -207,7 +207,7 @@ class BugzillaBackendTest(unittest.TestCase):
         craig_user = People.objects(email="craig.mcclanahan@sun.com").get()
         conor_user = People.objects(email="conor@apache.org").get()
 
-        all_events = Event.objects.all()
+        all_events = IssueEvent.objects.all()
 
         self.assertEqual(16, len(all_events))
 
@@ -357,7 +357,7 @@ class BugzillaBackendTest(unittest.TestCase):
         bugzilla_backend._store_events(self.issue_95_history, self.issue_95, stored_issue)
         bugzilla_backend.save_issues()
 
-        all_events = Event.objects.all()
+        all_events = IssueEvent.objects.all()
 
         self.assertEqual(16, len(all_events))
 

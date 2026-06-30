@@ -11,7 +11,7 @@ from mongoengine import connect
 import mongomock
 import mongoengine
 from issueshark.backends.github import GithubBackend
-from pycoshark.mongomodels import IssueSystem, Project, Issue, Event, IssueComment, People
+from pycoshark.mongomodels import IssueSystem, Project, Issue, IssueEvent, IssueComment, People
 
 class ConfigMock(object):
     def __init__(self, db_user, db_password, db_database, db_hostname, db_port, db_authentication, project_name,
@@ -78,7 +78,7 @@ class GithubBackendTest(unittest.TestCase):
         IssueSystem.drop_collection()
         Issue.drop_collection()
         IssueComment.drop_collection()
-        Event.drop_collection()
+        IssueEvent.drop_collection()
 
         self.project_id = Project(name='Composer').save().id
         self.issues_system_id = IssueSystem(project_id=self.project_id, url="http://blub.de",
@@ -196,7 +196,7 @@ class GithubBackendTest(unittest.TestCase):
         gh_backend._process_events(Issue.objects(external_id='6131').get())
         gh_backend._process_events(Issue.objects(external_id='6131').get())
         gh_backend.save_issues()
-        mongo_events = Event.objects.order_by('+created_at', '+external_id')
+        mongo_events = IssueEvent.objects.order_by('+created_at', '+external_id')
         self.assertEqual(6, len(mongo_events))
 
     @mock.patch('issueshark.backends.github.GithubBackend._send_request')
@@ -213,7 +213,7 @@ class GithubBackendTest(unittest.TestCase):
 
         mongo_issue = Issue.objects(external_id='6131').get()
 
-        mongo_events = Event.objects.order_by('+created_at', '+external_id')
+        mongo_events = IssueEvent.objects.order_by('+created_at', '+external_id')
         self.assertEqual(6, len(mongo_events))
 
         event = mongo_events[0]
@@ -277,7 +277,7 @@ class GithubBackendTest(unittest.TestCase):
         gh_backend.save_issues()
         mongo_issue = Issue.objects(external_id='6050').get()
 
-        mongo_events = Event.objects.order_by('+created_at', '+external_id')
+        mongo_events = IssueEvent.objects.order_by('+created_at', '+external_id')
         self.assertEqual(3, len(mongo_events))
 
         event = mongo_events[0]

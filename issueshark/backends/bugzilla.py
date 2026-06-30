@@ -9,7 +9,7 @@ from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
 from validate_email import validate_email
 import logging
 
-from pycoshark.mongomodels import Issue, People, Event, IssueComment
+from pycoshark.mongomodels import Issue, People, IssueEvent, IssueComment
 
 logger = logging.getLogger('backend')
 
@@ -124,7 +124,7 @@ class BugzillaBackend(BaseBackend):
                 continue
             for item_id, item in self.parsed_issues['events'][issue_id].items():
                 try:
-                    event = Event.objects.get(issue_id=issue.id, external_id=item_id)
+                    event = IssueEvent.objects.get(issue_id=issue.id, external_id=item_id)
                 except DoesNotExist:
                     continue
                 if isinstance(event.new_value, dict) and isinstance(event.new_value['issue_id'], str):
@@ -238,11 +238,11 @@ class BugzillaBackend(BaseBackend):
         mongo_event = None
         if mongo_issue:
             try:
-                mongo_event = Event.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
+                mongo_event = IssueEvent.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
             except DoesNotExist:
                 mongo_event = None
 
-        new_event = Event(
+        new_event = IssueEvent(
             external_id=unique_event_id,
             created_at=change_date,
             author_id=author_id
@@ -440,13 +440,11 @@ class BugzillaBackend(BaseBackend):
         """
         self.issue_id = str(bz_issue['id'])
         try:
-            # mongo_issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=self.issue_id).get()
-            mongo_issue = Issue.objects(issue_system_id=self.last_system_id, external_id=self.issue_id).get()
+            mongo_issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=self.issue_id).get()
             self.old_issues['issues'][self.issue_id] = mongo_issue
         except DoesNotExist:
             mongo_issue = None
-        # new_issue = Issue(issue_system_ids=[self.issue_system_id], external_id= self.issue_id)
-        new_issue = Issue(issue_system_id=self.issue_system_id, external_id= self.issue_id)
+        new_issue = Issue(issue_system_ids=[self.issue_system_id], external_id= self.issue_id)
 
         # Set fields that can be directly mapped
         for at_name_bz, at_name_mongo in self.at_mapping.items():
@@ -537,22 +535,17 @@ class BugzillaBackend(BaseBackend):
         """
         issue_id = None
         try:
-            # issue_id = Issue.objects(issue_system_ids=self.issue_system_id, external_id=str(external_id)).only(
-            #     'id').get().id
-            issue_id = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(external_id)).only(
+            issue_id = Issue.objects(issue_system_ids=self.issue_system_id, external_id=str(external_id)).only(
                 'id').get().id
         except DoesNotExist:
             pass
         if not issue_id:
             try:
-                # issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=str(external_id)).get()
-                # issue.issue_system_ids.append(self.issue_system_id)
-                issue = Issue.objects(issue_system_id=self.last_system_id, external_id=str(external_id)).get()
+                issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=str(external_id)).get()
                 issue.issue_system_id.append(self.issue_system_id)
                 issue.save()
                 issue_id = issue.id
             except DoesNotExist:
-                # issue_id = Issue(issue_system_ids=[self.issue_system_id], external_id=str(external_id)).save().id
-                issue_id = Issue(issue_system_id=self.issue_system_id, external_id=str(external_id)).save().id
+                issue_id = Issue(issue_system_ids=[self.issue_system_id], external_id=str(external_id)).save().id
 
         return issue_id

@@ -107,14 +107,12 @@ class GithubBackend(BaseBackend):
         try:
             # We can not return here, as the issue might be updated. This means, that the title could be updated
             # as well as comments and new events
-            # mongo_issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=self.issue_id).get()
-            mongo_issue = Issue.objects(issue_system_id=self.last_system_id, external_id=self.issue_id).get()
+            mongo_issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=self.issue_id).get()
             self.old_issues['issues'][self.issue_id] = mongo_issue
         except DoesNotExist:
             mongo_issue = None
 
-        # new_issue = Issue(issue_system_ids=[self.issue_system_id], external_id=self.issue_id)
-        new_issue = Issue(issue_system_id=self.issue_system_id, external_id=self.issue_id)
+        new_issue = Issue(issue_system_ids=[self.issue_system_id], external_id=self.issue_id)
 
         labels = []
         for label in raw_issue['labels']:
@@ -176,11 +174,11 @@ class GithubBackend(BaseBackend):
             mongo_event = None
             if mongo_issue:
                 try:
-                    mongo_event = Event.objects(external_id=str(raw_event['id']), issue_id=mongo_issue.id).get()
+                    mongo_event = IssueEvent.objects(external_id=str(raw_event['id']), issue_id=mongo_issue.id).get()
                 except DoesNotExist:
                     mongo_event = None
 
-            new_event = Event(external_id=str(raw_event['id']), created_at=created_at, status=raw_event['event'])
+            new_event = IssueEvent(external_id=str(raw_event['id']), created_at=created_at, status=raw_event['event'])
 
             if raw_event['commit_id'] is not None:
                 # It can happen that a commit from another repository references this issue. Therefore, we can not

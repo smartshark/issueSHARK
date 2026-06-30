@@ -9,7 +9,7 @@ from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
 from validate_email import validate_email
 import logging
 
-from pycoshark.mongomodels import Issue, People, Event, IssueComment
+from pycoshark.mongomodels import Issue, People, IssueEvent, IssueComment
 
 logger = logging.getLogger('backend')
 
@@ -76,7 +76,7 @@ class BugzillaBackend(BaseBackend):
         """
         self.bugzilla_agent = BugzillaAgent(logger, self.config)
         # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at')\
+        last_issue = Issue.objects(issue_system_ids=self.issue_system_id).order_by('-updated_at')\
             .only('updated_at').first()
         starting_date = None
         if last_issue is not None:
@@ -156,7 +156,7 @@ class BugzillaBackend(BaseBackend):
 
         # Store events
         if events_to_insert:
-            Event.objects.insert(events_to_insert, load_bulk=False)
+            IssueEvent.objects.insert(events_to_insert, load_bulk=False)
 
         # Store comments
         self._process_comments(mongo_issue.id, comments)
@@ -212,10 +212,10 @@ class BugzillaBackend(BaseBackend):
         """
         is_new_event = True
         try:
-            mongo_event = Event.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
+            mongo_event = IssueEvent.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
             is_new_event = False
         except DoesNotExist:
-            mongo_event = Event(
+            mongo_event = IssueEvent(
                 external_id=unique_event_id,
                 issue_id=mongo_issue.id,
                 created_at=change_date,
@@ -485,7 +485,7 @@ class BugzillaBackend(BaseBackend):
         :return:
         """
         try:
-            mongo_issue = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(bz_issue['id'])).get()
+            mongo_issue = Issue.objects(issue_system_ids=self.issue_system_id, external_id=str(bz_issue['id'])).get()
         except DoesNotExist:
             mongo_issue = Issue(
                 issue_system_id=self.issue_system_id,
@@ -582,8 +582,8 @@ class BugzillaBackend(BaseBackend):
         :param system_id: id of the issue in the bugzilla ITS
         """
         try:
-            issue_id = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(system_id)).only('id').get().id
+            issue_id = Issue.objects(issue_system_ids=self.issue_system_id, external_id=str(system_id)).only('id').get().id
         except DoesNotExist:
-            issue_id = Issue(issue_system_id=self.issue_system_id, external_id=str(system_id)).save().id
+            issue_id = Issue(issue_system_ids=[self.issue_system_id], external_id=str(system_id)).save().id
 
         return issue_id

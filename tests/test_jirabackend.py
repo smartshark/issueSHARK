@@ -12,7 +12,7 @@ import mongomock
 import mongoengine
 
 from issueshark.backends.jirabackend import JiraBackend
-from pycoshark.mongomodels import IssueSystem, Project, Issue, Event, IssueComment, People
+from pycoshark.mongomodels import IssueSystem, Project, Issue, IssueEvent, IssueComment, People
 
 
 class ConfigMock(object):
@@ -75,7 +75,7 @@ class JiraBackendTest(unittest.TestCase):
         IssueSystem.drop_collection()
         Issue.drop_collection()
         IssueComment.drop_collection()
-        Event.drop_collection()
+        IssueEvent.drop_collection()
 
         self.project_id = Project(name='Bla').save().id
         self.issues_system_id = IssueSystem(project_id=self.project_id,
@@ -110,8 +110,7 @@ class JiraBackendTest(unittest.TestCase):
         new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
 
         current_date = datetime.datetime.now()
-        # Issue(issue_system_ids=[self.issues_system_id], updated_at=current_date).save()
-        Issue(issue_system_id=self.issues_system_id, updated_at=current_date).save()
+        Issue(issue_system_ids=[self.issues_system_id], updated_at=current_date).save()
 
         self.assertEqual(
             'project=BLA ORDER BY updatedDate ASC',
@@ -134,7 +133,7 @@ class JiraBackendTest(unittest.TestCase):
         new_jira_backend._store_events(issue, stored_issue)
         new_jira_backend.save_issues()
 
-        stored_events = Event.objects(issue_id=stored_issue.id).all()
+        stored_events = IssueEvent.objects(issue_id=stored_issue.id).all()
         self.assertEqual(24, len(stored_events))
 
         jacques_user = People.objects(email="jacques@apache.org", username="jnadeau").get()
@@ -359,7 +358,7 @@ class JiraBackendTest(unittest.TestCase):
         new_jira_backend._store_events(issue, stored_issue)
         new_jira_backend.save_issues()
 
-        stored_events = Event.objects(issue_id=stored_issue.id).all()
+        stored_events = IssueEvent.objects(issue_id=stored_issue.id).all()
         self.assertEqual(7, len(stored_events))
 
     def test_store_jira_issue(self):
