@@ -4,17 +4,12 @@ import timeit
 import sys
 
 from datetime import datetime
-from mongoengine import connect, DoesNotExist, DateTimeField
+from mongoengine import connect, DoesNotExist
 from issueshark.backends.basebackend import BaseBackend
 from pycoshark.mongomodels import Project, IssueSystem
 from pycoshark.utils import create_mongodb_uri_string
 
 logger = logging.getLogger("main")
-
-if 'collection_date' not in IssueSystem._fields:
-    IssueSystem._fields['collection_date'] = IssueSystem.collection_date = DateTimeField(db_field='collection_date')
-    IssueSystem._db_field_map['collection_date'] = 'collection_date'
-    IssueSystem._fields_ordered += ('collection_date',)
 
 class IssueSHARK(object):
     """

@@ -8,7 +8,6 @@ import argparse
 from issueshark.backends.basebackend import BaseBackend
 from issueshark.config import Config, ConfigValidationException
 from issueshark.issueshark import IssueSHARK
-# from pycoshark.utils import get_base_argparser, delete_last_system_data_on_failure
 from pycoshark.utils import get_base_argparser
 
 def setup_logging(default_path=os.path.dirname(os.path.realpath(__file__))+"/loggerConfiguration.json",
