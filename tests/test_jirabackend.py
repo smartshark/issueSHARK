@@ -12,7 +12,7 @@ import mongomock
 import mongoengine
 
 from issueshark.backends.jirabackend import JiraBackend
-from pycoshark.mongomodels import IssueSystem, Project, Issue, Event, IssueComment, People
+from pycoshark.mongomodels import IssueSystem, Project, Issue, IssueEvent, IssueComment, People
 
 
 class ConfigMock(object):
@@ -75,12 +75,15 @@ class JiraBackendTest(unittest.TestCase):
         IssueSystem.drop_collection()
         Issue.drop_collection()
         IssueComment.drop_collection()
-        Event.drop_collection()
+        IssueEvent.drop_collection()
 
         self.project_id = Project(name='Bla').save().id
         self.issues_system_id = IssueSystem(project_id=self.project_id,
                                             url="https://issues.apache.org/search?jql=project=BLA",
-                                            last_updated=datetime.datetime.now()).save().id
+                                            collection_date=datetime.datetime.now()).save().id
+        self.issues_system_id_after = IssueSystem(project_id=self.project_id,
+                                            url="https://issues.apache.org/search?jql=project=BLA",
+                                            collection_date=datetime.datetime.now() + datetime.timedelta(days=1)).save().id
 
         self.conf = ConfigMock(None, None, None, None, None, None, 'Bla',
                                'https://issues.apache.org/search?jql=project=BLA', 'jira', None, None, None,
@@ -88,29 +91,29 @@ class JiraBackendTest(unittest.TestCase):
 
     def test_create_url_to_rest_interface_apache(self):
         self.conf.tracking_url = 'https://issues.apache.org/jira/rest/api/2/search?jql=project=DRILL'
-        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id)
+        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
 
         self.assertEqual('https://issues.apache.org/jira', new_jira_backend._create_url_to_jira_rest_interface())
 
     def test_create_url_to_rest_interface_non_apache(self):
         self.conf.tracking_url = 'https://issues.sonatype.org/rest/api/2/search?jql=project=NEXUS'
-        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id)
+        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
 
         self.assertEqual('https://issues.sonatype.org',new_jira_backend._create_url_to_jira_rest_interface())
 
     def test_query_without_issue_available(self):
-        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id)
+        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
 
         self.assertEqual('project=BLA ORDER BY updatedDate ASC', new_jira_backend._create_issue_query())
 
     def test_query_with_issue_available(self):
-        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id)
+        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
 
         current_date = datetime.datetime.now()
-        Issue(issue_system_id=self.issues_system_id, updated_at=current_date).save()
+        Issue(issue_system_ids=[self.issues_system_id], updated_at=current_date).save()
 
         self.assertEqual(
-            'project=BLA and updatedDate > \'%s\' ORDER BY updatedDate ASC' % current_date.strftime('%Y/%m/%d %H:%M'),
+            'project=BLA ORDER BY updatedDate ASC',
             new_jira_backend._create_issue_query()
         )
 
@@ -120,14 +123,17 @@ class JiraBackendTest(unittest.TestCase):
         user2_obj = jira.resources.User(options=None, session=None, raw=self.user2)
         get_user_mock.side_effect = [user1_obj, user2_obj]
 
-        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id)
+        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
 
         issue = jira.resources.Issue(options=None, session=None, raw=self.issue_drill_138)
-        mongo_issue = Issue(external_id="TEST", issue_system_id=self.issues_system_id).save()
+        new_jira_backend._store_jira_issue(issue)
+        new_jira_backend.save_issues()
 
-        new_jira_backend._store_events(issue, mongo_issue.id)
+        stored_issue = Issue.objects(external_id='DRILL-138').get()
+        new_jira_backend._store_events(issue, stored_issue)
+        new_jira_backend.save_issues()
 
-        stored_events = Event.objects(issue_id=mongo_issue.id).all()
+        stored_events = IssueEvent.objects(issue_id=stored_issue.id).all()
         self.assertEqual(24, len(stored_events))
 
         jacques_user = People.objects(email="jacques@apache.org", username="jnadeau").get()
@@ -175,20 +181,18 @@ class JiraBackendTest(unittest.TestCase):
         self.assertEqual(event.author_id, jacques_user.id)
 
         # Link
-        related_issue_1 = Issue.objects(external_id="ZOOKEEPER-232").get()
-        related_issue_2 = Issue.objects(external_id="ZOOKEEPER-231").get()
 
         event = stored_events[5]
         self.assertEqual(event.status, "issue_links")
         self.assertEqual(event.old_value, None)
-        self.assertEqual(event.new_value, {'effect': 'relates to', 'issue_id': related_issue_1.id, 'type': 'Reference'})
+        self.assertEqual(event.new_value, {'effect': 'relates to', 'issue_id': 'ZOOKEEPER-232', 'type': 'Reference'})
         self.assertEqual(event.created_at, datetime.datetime(2016, 8, 13, 17, 29, 13, 718000))
         self.assertEqual(event.author_id, jacques_user.id)
 
 
         event = stored_events[6]
         self.assertEqual(event.status, "issue_links")
-        self.assertEqual(event.old_value,  {'effect': 'relates to', 'issue_id': related_issue_2.id, 'type': 'Reference'})
+        self.assertEqual(event.old_value,  {'effect': 'relates to', 'issue_id': 'ZOOKEEPER-231', 'type': 'Reference'})
         self.assertEqual(event.new_value, None)
         self.assertEqual(event.created_at, datetime.datetime(2015, 2, 24, 17, 0, 58, 268000))
         self.assertEqual(event.author_id, timothy_user.id)
@@ -291,8 +295,8 @@ class JiraBackendTest(unittest.TestCase):
         # parent issue id
         event = stored_events[17]
         self.assertEqual(event.status, "parent_issue_id")
-        self.assertEqual(event.old_value, related_issue_1.id)
-        self.assertEqual(event.new_value, related_issue_2.id)
+        self.assertEqual(event.old_value, 'ZOOKEEPER-232')
+        self.assertEqual(event.new_value, 'ZOOKEEPER-231')
         self.assertEqual(event.created_at, datetime.datetime(2014, 2, 24, 17, 43, 46, 87000))
         self.assertEqual(event.author_id, cmerrick_user.id)
 
@@ -343,27 +347,30 @@ class JiraBackendTest(unittest.TestCase):
         self.assertEqual(event.author_id, cmerrick_user.id)
 
     def test_store_events_two_times(self):
-        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id)
+        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
 
         issue = jira.resources.Issue(options=None, session=None, raw=self.issue_drill_1)
-        mongo_issue = Issue(external_id="TEST", issue_system_id=self.issues_system_id).save()
+        new_jira_backend._store_jira_issue(issue)
+        new_jira_backend.save_issues()
+        stored_issue = Issue.objects(external_id='DRILL-1').get()
 
-        new_jira_backend._store_events(issue, mongo_issue.id)
-        new_jira_backend._store_events(issue, mongo_issue.id)
+        new_jira_backend._store_events(issue, stored_issue)
+        new_jira_backend._store_events(issue, stored_issue)
+        new_jira_backend.save_issues()
 
-        stored_events = Event.objects(issue_id=mongo_issue.id).all()
+        stored_events = IssueEvent.objects(issue_id=stored_issue.id).all()
         self.assertEqual(7, len(stored_events))
 
     def test_store_jira_issue(self):
         issue = jira.resources.Issue(options=None, session=None, raw=self.issue_drill_1)
-        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id)
+        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
         new_jira_backend._store_jira_issue(issue)
+        new_jira_backend.save_issues()
 
         stored_issue = Issue.objects(external_id='DRILL-1').get()
         creator = People.objects(email="michael.hausenblas@gmail.com").get()
-        related_issue = Issue.objects(external_id='DRILL-48').get()
 
-        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
+        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
         self.assertEqual(stored_issue.title, 'Thrift-based wire protocol')
         self.assertEqual(stored_issue.desc, 'Support a Thrift-based [1] wire protocol. Contributor: Michael Hausenblas.\r\n\r\nSee [2] for the discussion.\r\n\r\n\r\n[1] http://thrift.apache.org/\r\n[2] http://mail-archives.apache.org/mod_mbox/incubator-drill-dev/201209.mbox/%3C4C785CAB-FD0E-4C5A-8D83-7AD0B7752139%40gmail.com%3E')
         self.assertEqual(stored_issue.created_at, datetime.datetime(2012,9,5,16,34,55, 991000))
@@ -379,7 +386,7 @@ class JiraBackendTest(unittest.TestCase):
         self.assertEqual(stored_issue.resolution, 'Won\'t Fix')
         self.assertListEqual(stored_issue.fix_versions, ['0.4.0'])
         self.assertEqual(stored_issue.assignee_id, None)
-        self.assertListEqual(stored_issue.issue_links, [{'effect': 'is related to', 'issue_id': related_issue.id, 'type': 'Reference'}])
+        self.assertListEqual(stored_issue.issue_links, [{'effect': 'is related to', 'issue_id': 'DRILL-48', 'type': 'Reference'}])
         self.assertEqual(stored_issue.parent_issue_id, None)
         self.assertEqual(stored_issue.original_time_estimate, 3600)
         self.assertEqual(stored_issue.environment, "Windows")
@@ -387,12 +394,12 @@ class JiraBackendTest(unittest.TestCase):
 
         issue = jira.resources.Issue(options=None, session=None, raw=self.issue_drill_138)
         new_jira_backend._store_jira_issue(issue)
+        new_jira_backend.save_issues()
 
         stored_issue = Issue.objects(external_id='DRILL-138').get()
         creator = People.objects(email="altekrusejason@gmail.com").get()
-        related_issue = Issue.objects(external_id='DRILL-49').get()
 
-        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
+        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
         self.assertEqual(stored_issue.title, 'Fill basic optimizer with new Physical Operators')
         self.assertEqual(stored_issue.desc, 'As new Physical Operators are completed they must be added to the basic optimizer for logical to physical plan conversion.')
         self.assertEqual(stored_issue.created_at, datetime.datetime(2013, 7, 3, 0, 16, 13, 737000))
@@ -413,7 +420,7 @@ class JiraBackendTest(unittest.TestCase):
         self.assertListEqual(stored_issue.fix_versions, ['0.1.0-m1'])
         self.assertEqual(stored_issue.assignee_id, creator.id)
         self.assertListEqual(stored_issue.issue_links,
-                             [{'effect': 'duplicates', 'issue_id': related_issue.id, 'type': 'Duplicate'}])
+                            [{'effect': 'duplicates', 'issue_id': 'DRILL-49', 'type': 'Duplicate'}])
         self.assertEqual(stored_issue.parent_issue_id, None)
         self.assertEqual(stored_issue.original_time_estimate, 3600)
         self.assertEqual(stored_issue.environment, None)
@@ -421,13 +428,13 @@ class JiraBackendTest(unittest.TestCase):
 
         issue = jira.resources.Issue(options=None, session=None, raw=self.issue_drill_38)
         new_jira_backend._store_jira_issue(issue)
+        new_jira_backend.save_issues()
 
         stored_issue = Issue.objects(external_id='DRILL-38').get()
         creator = People.objects(email="christopherrmerrick@gmail.com", username="chrismerrick").get()
         assignee = People.objects(email="christopherrmerrick@gmail.com", username="cmerrick").get()
-        parent_issue = Issue.objects(external_id='DRILL-37').get()
 
-        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
+        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
         self.assertEqual(stored_issue.title, 'Limit ROP Unit Tests')
         self.assertEqual(stored_issue.desc, None)
         self.assertEqual(stored_issue.created_at, datetime.datetime(2013, 2, 24, 2, 4, 42, 952000))
@@ -443,7 +450,7 @@ class JiraBackendTest(unittest.TestCase):
         self.assertListEqual(stored_issue.fix_versions, ['0.1.0-m1'])
         self.assertEqual(stored_issue.assignee_id, assignee.id)
         self.assertListEqual(stored_issue.issue_links, [])
-        self.assertEqual(stored_issue.parent_issue_id, parent_issue.id)
+        self.assertEqual(stored_issue.parent_issue_id, 'DRILL-37')
         self.assertEqual(stored_issue.original_time_estimate, None)
         self.assertEqual(stored_issue.environment, None)
         self.assertEqual(stored_issue.platform, None)
@@ -451,15 +458,15 @@ class JiraBackendTest(unittest.TestCase):
     def test_store_jira_issue_after_change(self):
         issue = jira.resources.Issue(options=None, session=None, raw=self.issue_drill_38)
 
-        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id)
+        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
         new_jira_backend._store_jira_issue(issue)
+        new_jira_backend.save_issues()
 
         stored_issue = Issue.objects(external_id='DRILL-38').get()
         creator = People.objects(email="christopherrmerrick@gmail.com", username="chrismerrick").get()
         assignee = People.objects(email="christopherrmerrick@gmail.com", username="cmerrick").get()
-        parent_issue = Issue.objects(external_id='DRILL-37').get()
 
-        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
+        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
         self.assertEqual(stored_issue.title, 'Limit ROP Unit Tests')
         self.assertEqual(stored_issue.desc, None)
         self.assertEqual(stored_issue.created_at, datetime.datetime(2013, 2, 24, 2, 4, 42, 952000))
@@ -475,16 +482,18 @@ class JiraBackendTest(unittest.TestCase):
         self.assertListEqual(stored_issue.fix_versions, ['0.1.0-m1'])
         self.assertEqual(stored_issue.assignee_id, assignee.id)
         self.assertListEqual(stored_issue.issue_links, [])
-        self.assertEqual(stored_issue.parent_issue_id, parent_issue.id)
+        self.assertEqual(stored_issue.parent_issue_id, 'DRILL-37')
         self.assertEqual(stored_issue.original_time_estimate, None)
         self.assertEqual(stored_issue.environment, None)
         self.assertEqual(stored_issue.platform, None)
 
         issue.fields.priority = 'Minor'
+        new_jira_backend.issue_system_id = self.issues_system_id_after
         new_jira_backend._store_jira_issue(issue)
-        stored_issue = Issue.objects(external_id='DRILL-38').get()
+        new_jira_backend.save_issues()
+        stored_issue = Issue.objects(external_id='DRILL-38', issue_system_ids=self.issues_system_id_after).get()
 
-        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
+        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id_after])
         self.assertEqual(stored_issue.title, 'Limit ROP Unit Tests')
         self.assertEqual(stored_issue.desc, None)
         self.assertEqual(stored_issue.created_at, datetime.datetime(2013, 2, 24, 2, 4, 42, 952000))
@@ -500,19 +509,22 @@ class JiraBackendTest(unittest.TestCase):
         self.assertListEqual(stored_issue.fix_versions, ['0.1.0-m1'])
         self.assertEqual(stored_issue.assignee_id, assignee.id)
         self.assertListEqual(stored_issue.issue_links, [])
-        self.assertEqual(stored_issue.parent_issue_id, parent_issue.id)
+        self.assertEqual(stored_issue.parent_issue_id, 'DRILL-37')
         self.assertEqual(stored_issue.original_time_estimate, None)
         self.assertEqual(stored_issue.environment, None)
         self.assertEqual(stored_issue.platform, None)
 
     def test_store_comments(self):
         issue = jira.resources.Issue(options=None, session=None, raw=self.issue_drill_38)
-        mongo_issue = Issue(external_id="TEST", issue_system_id=self.issues_system_id).save()
+        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
+        new_jira_backend._store_jira_issue(issue)
+        new_jira_backend.save_issues()
 
-        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id)
-        new_jira_backend._store_comments(issue, mongo_issue.id)
+        stored_issue = Issue.objects(external_id='DRILL-38').get()
+        new_jira_backend._store_comments(issue, stored_issue)
+        new_jira_backend.save_issues()
 
-        all_comments = IssueComment.objects(issue_id=mongo_issue.id).all()
+        all_comments = IssueComment.objects(issue_id=stored_issue.id).all()
 
         self.assertEqual(len(all_comments), 4)
 
@@ -551,13 +563,17 @@ class JiraBackendTest(unittest.TestCase):
 
     def test_store_comments_two_times(self):
         issue = jira.resources.Issue(options=None, session=None, raw=self.issue_drill_38)
-        mongo_issue = Issue(external_id="TEST", issue_system_id=self.issues_system_id).save()
 
-        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id)
-        new_jira_backend._store_comments(issue, mongo_issue.id)
-        new_jira_backend._store_comments(issue, mongo_issue.id)
+        new_jira_backend = JiraBackend(self.conf, self.issues_system_id, self.project_id, None)
+        new_jira_backend._store_jira_issue(issue)
+        new_jira_backend.save_issues()
 
-        all_comments = IssueComment.objects(issue_id=mongo_issue.id).all()
+        stored_issue = Issue.objects(external_id='DRILL-38').get()
+        new_jira_backend._store_comments(issue, stored_issue)
+        new_jira_backend._store_comments(issue, stored_issue)
+        new_jira_backend.save_issues()
+
+        all_comments = IssueComment.objects(issue_id=stored_issue.id).all()
 
         self.assertEqual(len(all_comments), 4)
 

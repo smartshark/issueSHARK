@@ -9,7 +9,7 @@ from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
 from validate_email import validate_email
 import logging
 
-from pycoshark.mongomodels import Issue, People, Event, IssueComment
+from pycoshark.mongomodels import Issue, People, IssueEvent, IssueComment
 
 logger = logging.getLogger('backend')
 
@@ -25,7 +25,7 @@ class BugzillaBackend(BaseBackend):
         """
         return 'bugzilla'
 
-    def __init__(self, cfg, issue_system_id, project_id):
+    def __init__(self, cfg, issue_system_id, project_id, last_system_id):
         """
         Initialization
         Initializes the people dictionary see: :func:`~issueshark.backends.bugzilla.BugzillaBackend._get_people`
@@ -36,7 +36,7 @@ class BugzillaBackend(BaseBackend):
         :param issue_system_id: id of the issue system for which data should be collected. :class:`bson.objectid.ObjectId`
         :param project_id: id of the project to which the issue system belongs. :class:`bson.objectid.ObjectId`
         """
-        super().__init__(cfg, issue_system_id, project_id)
+        super().__init__(cfg, issue_system_id, project_id, last_system_id)
 
         logger.setLevel(self.debug_level)
         self.bugzilla_agent = None
@@ -76,15 +76,9 @@ class BugzillaBackend(BaseBackend):
         4. For each issue calls: :func:`issueshark.backends.bugzilla.BugzillaBackend._process_issue`
         """
         self.bugzilla_agent = BugzillaAgent(logger, self.config)
-        # Get last modification date (since then, we will collect bugs)
-        last_issue = Issue.objects(issue_system_id=self.issue_system_id).order_by('-updated_at')\
-            .only('updated_at').first()
-        starting_date = None
-        if last_issue is not None:
-           starting_date = last_issue.updated_at
 
         # Get all issues
-        issues = self.bugzilla_agent.get_bug_list(last_change_time=starting_date, limit=50)
+        issues = self.bugzilla_agent.get_bug_list(limit=50)
 
         # If no new bugs found, return
         if len(issues) == 0:
@@ -93,15 +87,54 @@ class BugzillaBackend(BaseBackend):
 
         # Otherwise, go through all issues
         processed_results = 50
-        while len(issues) > 0:
+        while processed_results < 100:
+
             logger.info("Processing %d issues..." % len(issues))
             for issue in issues:
                 logger.info("Processing issue %s" % issue['id'])
                 self._process_issue(issue)
 
             # Go through the next issues
-            issues = self.bugzilla_agent.get_bug_list(last_change_time=starting_date, limit=50, offset=processed_results)
+            issues = self.bugzilla_agent.get_bug_list(limit=50, offset=processed_results)
             processed_results += 50
+        self.save_issues()
+        self.link_issues()
+
+    def link_issues(self):
+        """
+            Link parsed issues and events from an external issue tracking system to corresponding MongoDB documents.
+
+            This method iterates through the parsed issues and their events, updating the issue and event documents
+            in the MongoDB database based on external identifiers. It performs the following tasks:
+
+            1. Iterates through parsed issues, retrieves corresponding MongoDB document, and updates linked issues.
+            2. Iterates through events of each issue, retrieves corresponding MongoDB document, and updates external issue references.
+        """
+        for issue_id, issue in self.parsed_issues['issues'].items():
+            try:
+                mongo_issue = Issue.objects.get(issue_system_ids=self.issue_system_id, external_id=issue_id)
+            except DoesNotExist:
+                continue
+            for link_issue in mongo_issue.issue_links:
+                if isinstance(link_issue['issue_id'], int):
+                    link_issue['issue_id'] = self._get_issue_id_by_external_id(link_issue['issue_id'])
+                    mongo_issue.save()
+            if issue_id not in self.parsed_issues['events']:
+                continue
+            for item_id, item in self.parsed_issues['events'][issue_id].items():
+                try:
+                    event = IssueEvent.objects.get(issue_id=issue.id, external_id=item_id)
+                except DoesNotExist:
+                    continue
+                if isinstance(event.new_value, dict) and isinstance(event.new_value['issue_id'], str):
+                    external_id = event.new_value['issue_id']
+                    mongo_issue_id = self._get_issue_id_by_external_id(external_id)
+                    event.new_value = {'issue_id': mongo_issue_id, 'type': event.new_value['type'], 'effect': event.new_value['effect']}
+                if isinstance(event.old_value, dict) and isinstance(event.old_value['issue_id'], str):
+                    external_id = event.old_value['issue_id']
+                    mongo_issue_id = self._get_issue_id_by_external_id(external_id)
+                    event.old_value = {'issue_id': mongo_issue_id, 'type': event.old_value['type'], 'effect': event.old_value['effect']}
+                event.save()
 
     def _process_issue(self, issue):
         """
@@ -132,7 +165,7 @@ class BugzillaBackend(BaseBackend):
         self._store_events(histories, issue, mongo_issue)
 
         # Store comments
-        self._process_comments(mongo_issue.id, comments)
+        self._process_comments(mongo_issue, comments)
 
     def _store_events(self, histories, issue, mongo_issue):
         # Store events
@@ -140,36 +173,26 @@ class BugzillaBackend(BaseBackend):
         events_to_insert = []
         for history in histories:
             i = 0
-            change_date = dateutil.parser.parse(history['when'])
+            change_date = dateutil.parser.parse(history['when']).replace(tzinfo=None)
             author_id = self._get_people(history['who'])
             for bz_event in history['changes']:
                 logger.debug("Processing event: %s" % bz_event)
                 unique_event_id = str(issue['id']) + "%%" + str(i) + "%%" + str(j)
-                mongo_event, is_new_event = self._process_event(unique_event_id, bz_event, mongo_issue, change_date,
-                                                                author_id)
-                logger.debug('Newly created?: %s, Resulting event: %s' % (is_new_event, mongo_event))
-
+                self._process_event(unique_event_id, bz_event, mongo_issue, change_date, author_id)
                 # Append to list if event is not stored in db
-                if is_new_event:
-                    events_to_insert.append(mongo_event)
 
                 i += 1
             j += 1
 
-        # Store events
-        if events_to_insert:
-            Event.objects.insert(events_to_insert, load_bulk=False)
-
-    def _process_comments(self, mongo_issue_id, comments):
+    def _process_comments(self, mongo_issue, comments):
         """
         Processes the comments for an issue
 
-        :param mongo_issue_id: Object of class :class:`bson.objectid.ObjectId`. Identifier of the document that holds \
+        :param mongo_issue: Object of class :class:`bson.objectid.ObjectId`. Identifier of the document that holds \
         the issue information
         :param comments: comments that were received from the bugzilla API
         """
         # Go through all comments of the issue
-        comments_to_insert = []
         logger.info('Processing %d comments...' % (len(comments)-1))
         i = -1
         for comment in comments:
@@ -179,24 +202,26 @@ class BugzillaBackend(BaseBackend):
 
             i += 1
             logger.debug('Processing comment: %s' % comment)
-            unique_comment_id = "%s%%%s" % (mongo_issue_id, i)
-            try:
-                IssueComment.objects(external_id=unique_comment_id, issue_id=mongo_issue_id).get()
-                continue
-            except DoesNotExist:
-                mongo_comment = IssueComment(
-                    external_id=unique_comment_id,
-                    issue_id=mongo_issue_id,
-                    created_at=dateutil.parser.parse(comment['creation_time']),
-                    author_id=self._get_people(comment['creator']),
-                    comment=comment['text'],
-                )
-                logger.debug('Resulting comment: %s' % mongo_comment)
-                comments_to_insert.append(mongo_comment)
+            unique_comment_id = "%s%%%s" % (self.issue_id, i)
 
-        # If comments need to be inserted -> bulk insert
-        if comments_to_insert:
-            IssueComment.objects.insert(comments_to_insert, load_bulk=False)
+            mongo_comment = None
+            if mongo_issue:
+                try:
+                    mongo_comment = IssueComment.objects(external_id=unique_comment_id, issue_id=mongo_issue.id).get()
+                except DoesNotExist:
+                    mongo_comment = None
+            new_comment = IssueComment(
+                external_id=unique_comment_id,
+                created_at=dateutil.parser.parse(comment['creation_time']).replace(tzinfo=None),
+                author_id=self._get_people(comment['creator']),
+                comment=comment['text'],
+            )
+            logger.debug('Resulting comment: %s' % new_comment)
+
+            if self.issue_id not in self.parsed_issues['comments']:
+                self.parsed_issues['comments'][self.issue_id] = {}
+            self.parsed_issues['comments'][self.issue_id][unique_comment_id] = new_comment
+            self.check_diff_comment_event(mongo_comment, new_comment)
 
     def _process_event(self, unique_event_id, bz_event, mongo_issue, change_date, author_id):
         """
@@ -209,16 +234,18 @@ class BugzillaBackend(BaseBackend):
         :param change_date: date when the event was created
         :param author_id: :class:`bson.objectid.ObjectId` of the author of the event
         """
-        try:
-            mongo_event = Event.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
-            return mongo_event, False
-        except DoesNotExist:
-            mongo_event = Event(
-                external_id=unique_event_id,
-                issue_id=mongo_issue.id,
-                created_at=change_date,
-                author_id=author_id
-            )
+        mongo_event = None
+        if mongo_issue:
+            try:
+                mongo_event = IssueEvent.objects(external_id=unique_event_id, issue_id=mongo_issue.id).get()
+            except DoesNotExist:
+                mongo_event = None
+
+        new_event = IssueEvent(
+            external_id=unique_event_id,
+            created_at=change_date,
+            author_id=author_id
+        )
 
         # We need to map back the status from the bz terminology to ours. Special: The assigned_to must be mapped to
         # assigned_to_detail beforehand, as we are using this for the issue parsing
@@ -228,43 +255,46 @@ class BugzillaBackend(BaseBackend):
             bz_at_name = bz_event['field_name']
 
         try:
-            mongo_event.status = self.at_mapping[bz_at_name]
+            new_event.status = self.at_mapping[bz_at_name]
         except KeyError:
             logger.warning('Mapping for attribute %s not found.' % bz_at_name)
-            mongo_event.status = bz_at_name
+            new_event.status = bz_at_name
 
-        if mongo_event.status == 'assignee_id':
+        if new_event.status == 'assignee_id':
             if bz_event['added'] is not None and bz_event['added']:
                 people_id = self._get_people(bz_event['added'])
-                mongo_event.new_value = people_id
+                new_event.new_value = people_id
 
             if bz_event['removed'] is not None and bz_event['removed']:
                 people_id = self._get_people(bz_event['removed'])
-                mongo_event.old_value = people_id
+                new_event.old_value = people_id
+
         elif bz_event['field_name'] == 'depends_on':
             if bz_event['added'] is not None and bz_event['added']:
-                issue_id = self._get_issue_id_by_system_id(bz_event['added'])
-                mongo_event.new_value = {'issue_id': issue_id, 'type': 'Dependent', 'effect': 'depends on'}
+                new_event.new_value = {'issue_id': bz_event['added'], 'type': 'Dependent', 'effect': 'depends on'}
 
             if bz_event['removed'] is not None and bz_event['removed']:
-                issue_id = self._get_issue_id_by_system_id(bz_event['removed'])
-                mongo_event.old_value = {'issue_id': issue_id, 'type': 'Dependent', 'effect': 'depends on'}
+                new_event.old_value = {'issue_id': bz_event['removed'], 'type': 'Dependent', 'effect': 'depends on'}
+
         elif bz_event['field_name'] == 'blocks':
             if bz_event['added'] is not None and bz_event['added']:
-                issue_id = self._get_issue_id_by_system_id(bz_event['added'])
-                mongo_event.new_value = {'issue_id': issue_id, 'type': 'Blocker', 'effect': 'blocks'}
+                new_event.new_value = {'issue_id': bz_event['added'], 'type': 'Blocker', 'effect': 'blocks'}
 
             if bz_event['removed'] is not None and bz_event['removed']:
-                issue_id = self._get_issue_id_by_system_id(bz_event['removed'])
-                mongo_event.old_value = {'issue_id': issue_id, 'type': 'Blocker', 'effect': 'blocks'}
+                new_event.old_value = {'issue_id': bz_event['removed'], 'type': 'Blocker', 'effect': 'blocks'}
         else:
             if bz_event['added'] is not None and bz_event['added']:
-                mongo_event.new_value = bz_event['added']
+                new_event.new_value = bz_event['added']
 
             if bz_event['removed'] is not None and bz_event['removed']:
-                mongo_event.old_value = bz_event['removed']
+                new_event.old_value = bz_event['removed']
 
-        return mongo_event, True
+        if self.issue_id not in self.parsed_issues['events']:
+            self.parsed_issues['events'][self.issue_id] = {}
+        self.parsed_issues['events'][self.issue_id][unique_event_id] = new_event
+        self.check_diff_comment_event(mongo_event, new_event)
+
+
 
     def _parse_bz_field(self, bz_issue, at_name_bz):
         """
@@ -376,14 +406,14 @@ class BugzillaBackend(BaseBackend):
         if isinstance(bz_issue[at_name_bz], list):
             for link in bz_issue[at_name_bz]:
                 issue_links.append({
-                    'issue_id': self._get_issue_id_by_system_id(link),
+                    'issue_id': link,
                     'type': type_mapping[at_name_bz],
                     'effect': effect_mapping[at_name_bz]
                 })
         else:
             if bz_issue[at_name_bz] is not None:
                 issue_links.append({
-                    'issue_id': self._get_issue_id_by_system_id(bz_issue[at_name_bz]),
+                    'issue_id': bz_issue[at_name_bz],
                     'type': type_mapping[at_name_bz],
                     'effect': effect_mapping[at_name_bz]
                 })
@@ -397,7 +427,7 @@ class BugzillaBackend(BaseBackend):
         :param bz_issue: bugzilla issue (returned by the API)
         :param at_name_bz: attribute name that should be parsed
         """
-        return dateutil.parser.parse(bz_issue[at_name_bz])
+        return dateutil.parser.parse(bz_issue[at_name_bz]).replace(tzinfo=None)
 
     def _transform_issue(self, bz_issue, bz_comments):
         """
@@ -407,20 +437,20 @@ class BugzillaBackend(BaseBackend):
         :param bz_comments: comments to the bugzilla issue (as the first comment is the description of the issue)
         :return:
         """
+        self.issue_id = str(bz_issue['id'])
         try:
-            mongo_issue = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(bz_issue['id'])).get()
+            mongo_issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=self.issue_id).get()
+            self.old_issues['issues'][self.issue_id] = mongo_issue
         except DoesNotExist:
-            mongo_issue = Issue(
-                issue_system_id=self.issue_system_id,
-                external_id=str(bz_issue['id'])
-            )
+            mongo_issue = None
+        new_issue = Issue(issue_system_ids=[self.issue_system_id], external_id= self.issue_id)
 
         # Set fields that can be directly mapped
         for at_name_bz, at_name_mongo in self.at_mapping.items():
-            if isinstance(getattr(mongo_issue, at_name_mongo), list):
+            if isinstance(getattr(new_issue, at_name_mongo), list):
                 # Get the result and the current value and merge it together
                 result = self._parse_bz_field(bz_issue, at_name_bz)
-                current_value = getattr(mongo_issue, at_name_mongo, list())
+                current_value = getattr(new_issue, at_name_mongo, list())
                 if not isinstance(result, list):
                     result = [result]
 
@@ -432,30 +462,24 @@ class BugzillaBackend(BaseBackend):
                     current_value = list(set(current_value))
 
                 # Set the attribute
-                setattr(mongo_issue, at_name_mongo, copy.deepcopy(current_value))
+                setattr(new_issue, at_name_mongo, copy.deepcopy(current_value))
             else:
-                setattr(mongo_issue, at_name_mongo, self._parse_bz_field(bz_issue, at_name_bz))
+                setattr(new_issue, at_name_mongo, self._parse_bz_field(bz_issue, at_name_bz))
 
         # The first comment is the description! Bugzilla does not have a separate description field. The comment
         # with the count == 0 is the description
         for comment in bz_comments:
             if comment['count'] == 0:
-                mongo_issue.desc = comment['text']
+                new_issue.desc = comment['text']
                 break
 
         # If we have a creator, its also the repoerter in bugzilla terminology
         if bz_issue['creator_detail'] is not None:
-            mongo_issue.reporter_id = mongo_issue.creator_id
+            new_issue.reporter_id = new_issue.creator_id
 
-        # moved to its own function, can be deleted later
-        # Bugzilla does not have a separate field for the type. Therefore, we distinguish between bug an enhancement
-        # based on the severity information
-        # if bz_issue['severity'] == 'enhancement':
-        #     mongo_issue.issue_type = 'Enhancement'
-        # else:
-        #     mongo_issue.issue_type = 'Bug'
-
-        return mongo_issue.save()
+        self.parsed_issues['issues'][self.issue_id] = new_issue
+        self.check_diff_issue(mongo_issue, new_issue)
+        return mongo_issue
 
     def _get_mongo_attribute(self, field_name):
         """
@@ -503,15 +527,24 @@ class BugzillaBackend(BaseBackend):
         self.people[username] = people_id
         return people_id
 
-    def _get_issue_id_by_system_id(self, system_id):
+    def _get_issue_id_by_external_id(self, external_id):
         """
         Gets the issue by their id that was assigned by the bugzilla ITS
-
-        :param system_id: id of the issue in the bugzilla ITS
+        :param external_id: id of the issue in the bugzilla ITS
         """
+        issue_id = None
         try:
-            issue_id = Issue.objects(issue_system_id=self.issue_system_id, external_id=str(system_id)).only('id').get().id
+            issue_id = Issue.objects(issue_system_ids=self.issue_system_id, external_id=str(external_id)).only(
+                'id').get().id
         except DoesNotExist:
-            issue_id = Issue(issue_system_id=self.issue_system_id, external_id=str(system_id)).save().id
+            pass
+        if not issue_id:
+            try:
+                issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=str(external_id)).get()
+                issue.issue_system_ids.append(self.issue_system_id)
+                issue.save()
+                issue_id = issue.id
+            except DoesNotExist:
+                issue_id = Issue(issue_system_ids=[self.issue_system_id], external_id=str(external_id)).save().id
 
         return issue_id

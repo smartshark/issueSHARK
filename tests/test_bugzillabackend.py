@@ -5,13 +5,11 @@ import datetime
 
 import logging
 import json
-import jira
 import mock
-from mongoengine import connect
 import mongomock
 import mongoengine
 from issueshark.backends.bugzilla import BugzillaBackend
-from pycoshark.mongomodels import IssueSystem, Project, Issue, Event, IssueComment, People
+from pycoshark.mongomodels import IssueSystem, Project, Issue, IssueEvent, IssueComment, People
 
 from issueshark.backends.helpers.bugzillaagent import BugzillaAgent
 
@@ -88,35 +86,29 @@ class BugzillaBackendTest(unittest.TestCase):
         IssueSystem.drop_collection()
         Issue.drop_collection()
         IssueComment.drop_collection()
-        Event.drop_collection()
+        IssueEvent.drop_collection()
 
         self.project_id = Project(name='Bla').save().id
         self.issues_system_id = IssueSystem(project_id=self.project_id,
                                             url="https://issues.apache.org/search?jql=project=BLA",
-                                            last_updated=datetime.datetime.now()).save().id
+                                            collection_date=datetime.datetime.now()).save().id
 
         self.conf = ConfigMock(None, None, None, None, None, None, 'Bla',
                                'Nonsense?product=Blub', 'bugzilla', None, None, None,
                                None, None, None, 'DEBUG', '123')
 
     def test_transform_issue(self):
-        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id)
+        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id, None)
         bugzilla_backend._transform_issue(self.issue_95, self.issue_95_comments)
+        bugzilla_backend.save_issues()
 
         stored_issue = Issue.objects(external_id="95").get()
-        blocks_issue_1 = Issue.objects(external_id="31389").get()
-        blocks_issue_2 = Issue.objects(external_id="23453").get()
-
-        depends_on_issue_1 = Issue.objects(external_id="22269").get()
-        depends_on_issue_2 = Issue.objects(external_id="34532").get()
-
-        duplicates_issue = Issue.objects(external_id="30576").get()
 
 
         creator = People.objects(email="anand@avnisoft.com").get()
         assignee = People.objects(email="notifications@ant.apache.org").get()
 
-        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
+        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
         self.assertEqual(stored_issue.title, "The \"java\" task doesn't work. BugRat Report#85")
         self.assertEqual(stored_issue.desc, "Description text")
         self.assertEqual(stored_issue.created_at, datetime.datetime(2000, 9, 7, 20, 20, 32))
@@ -135,33 +127,37 @@ class BugzillaBackendTest(unittest.TestCase):
         self.assertEqual(stored_issue.fix_versions, ["---"])
         self.assertEqual(stored_issue.assignee_id, assignee.id)
         self.assertEqual(len(stored_issue.issue_links), 5)
-        self.assertIn({'issue_id': blocks_issue_1.id, 'type': 'Blocker', 'effect': 'blocks'}, stored_issue.issue_links)
-        self.assertIn({'issue_id': blocks_issue_2.id, 'type': 'Blocker', 'effect': 'blocks'}, stored_issue.issue_links)
-        self.assertIn({'issue_id': depends_on_issue_1.id, 'type': 'Dependent', 'effect': 'depends on'}, stored_issue.issue_links)
-        self.assertIn({'issue_id': depends_on_issue_2.id, 'type': 'Dependent', 'effect': 'depends on'}, stored_issue.issue_links)
-        self.assertIn({'issue_id': duplicates_issue.id, 'type': 'Duplicate', 'effect': 'duplicates'}, stored_issue.issue_links)
+        self.assertIn({'issue_id': 31389, 'type': 'Blocker', 'effect': 'blocks'}, stored_issue.issue_links)
+        self.assertIn({'issue_id': 23453, 'type': 'Blocker', 'effect': 'blocks'}, stored_issue.issue_links)
+        self.assertIn({'issue_id': 22269, 'type': 'Dependent', 'effect': 'depends on'}, stored_issue.issue_links)
+        self.assertIn({'issue_id': 22269, 'type': 'Dependent', 'effect': 'depends on'}, stored_issue.issue_links)
+        self.assertIn({'issue_id': 30576, 'type': 'Duplicate', 'effect': 'duplicates'}, stored_issue.issue_links)
         self.assertEqual(stored_issue.environment, "All")
         self.assertEqual(stored_issue.platform, "All")
 
     def test_store_issue_two_times(self):
-        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id)
+        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id, None)
         bugzilla_backend._transform_issue(self.issue_1, self.issue_95_comments)
         bugzilla_backend._transform_issue(self.issue_1, self.issue_95_comments)
+        bugzilla_backend.save_issues()
 
         stored_issues = Issue.objects.all()
         self.assertEqual(len(stored_issues), 1)
 
     @mock.patch('issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_user')
     def test_process_comments(self, get_user_mock):
-        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id)
+        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id, None)
         bugzilla_backend.bugzilla_agent = BugzillaAgent(None, self.conf)
-        issue = Issue(external_id="TEST", issue_system_id=self.issues_system_id).save()
+        bugzilla_backend._transform_issue(self.issue_95, self.issue_95_comments)
+        bugzilla_backend.save_issues()
+        stored_issue = Issue.objects(external_id="95").get()
 
         get_user_mock.side_effect = [self.dev_tomcat_file, self.conor_user]
 
-        bugzilla_backend._process_comments(issue.id, self.issue_95_comments)
+        bugzilla_backend._process_comments(stored_issue, self.issue_95_comments)
+        bugzilla_backend.save_issues()
 
-        all_comments = IssueComment.objects(issue_id=issue.id).all()
+        all_comments = IssueComment.objects(issue_id=stored_issue.id).all()
         self.assertEqual(2, len(all_comments))
 
         # comment 1
@@ -181,30 +177,36 @@ class BugzillaBackendTest(unittest.TestCase):
 
     @mock.patch('issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_user')
     def test_process_comments_two_times(self, get_user_mock):
-        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id)
+        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id, None)
         bugzilla_backend.bugzilla_agent = BugzillaAgent(None, self.conf)
-        issue = Issue(external_id="TEST", issue_system_id=self.issues_system_id).save()
+        bugzilla_backend._transform_issue(self.issue_95, self.issue_95_comments)
+        bugzilla_backend.save_issues()
+        stored_issue = Issue.objects(external_id="95").get()
 
         get_user_mock.side_effect = [self.dev_tomcat_file, self.conor_user]
 
-        bugzilla_backend._process_comments(issue.id, self.issue_95_comments)
-        bugzilla_backend._process_comments(issue.id, self.issue_95_comments)
+        bugzilla_backend._process_comments(stored_issue, self.issue_95_comments)
+        bugzilla_backend._process_comments(stored_issue, self.issue_95_comments)
+        bugzilla_backend.save_issues()
 
         self.assertEqual(2, len(IssueComment.objects.all()))
 
     @mock.patch('issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_user')
     def test_store_events(self, get_user_mock):
-        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id)
+        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id, None)
         bugzilla_backend.bugzilla_agent = BugzillaAgent(None, self.conf)
-        issue = Issue(external_id="TEST", issue_system_id=self.issues_system_id).save()
+        bugzilla_backend._transform_issue(self.issue_95, self.issue_95_comments)
+        bugzilla_backend.save_issues()
+        stored_issue = Issue.objects(external_id="95").get()
 
         get_user_mock.side_effect = [self.craig_user, self.conor_user, self.craig_user, self.conor_user, self.conor_user]
-        bugzilla_backend._store_events(self.issue_95_history, self.issue_95, issue)
+        bugzilla_backend._store_events(self.issue_95_history, self.issue_95, stored_issue)
+        bugzilla_backend.save_issues()
 
         craig_user = People.objects(email="craig.mcclanahan@sun.com").get()
         conor_user = People.objects(email="conor@apache.org").get()
 
-        all_events = Event.objects.all()
+        all_events = IssueEvent.objects.all()
 
         self.assertEqual(16, len(all_events))
 
@@ -281,21 +283,19 @@ class BugzillaBackendTest(unittest.TestCase):
         self.assertEqual(event.author_id, craig_user.id)
 
         # depends_on / issue_links
-        related_issue_41817 = Issue.objects(external_id="41817").get()
 
         event = all_events[9]
         self.assertEqual(event.status, "issue_links")
         self.assertEqual(event.old_value, None)
-        self.assertEqual(event.new_value, {'issue_id': related_issue_41817.id, 'type': 'Dependent', 'effect': 'depends on'})
+        self.assertEqual(event.new_value, {'issue_id': '41817', 'type': 'Dependent', 'effect': 'depends on'})
         self.assertEqual(event.created_at, datetime.datetime(2001, 2, 3, 17, 48, 45))
         self.assertEqual(event.author_id, craig_user.id)
 
         # depends_on / issue_links
-        related_issue_41818 = Issue.objects(external_id="41818").get()
 
         event = all_events[10]
         self.assertEqual(event.status, "issue_links")
-        self.assertEqual(event.old_value, {'issue_id': related_issue_41818.id, 'type': 'Dependent', 'effect': 'depends on'})
+        self.assertEqual(event.old_value, {'issue_id': '41818', 'type': 'Dependent', 'effect': 'depends on'})
         self.assertEqual(event.new_value, None)
         self.assertEqual(event.created_at, datetime.datetime(2001, 2, 3, 17, 48, 45))
         self.assertEqual(event.author_id, craig_user.id)
@@ -304,7 +304,7 @@ class BugzillaBackendTest(unittest.TestCase):
         event = all_events[11]
         self.assertEqual(event.status, "issue_links")
         self.assertEqual(event.old_value, None)
-        self.assertEqual(event.new_value, {'issue_id': related_issue_41817.id, 'type': 'Blocker', 'effect': 'blocks'})
+        self.assertEqual(event.new_value, {'issue_id': '41817', 'type': 'Blocker', 'effect': 'blocks'})
         self.assertEqual(event.created_at, datetime.datetime(2001, 2, 3, 17, 48, 45))
         self.assertEqual(event.author_id, craig_user.id)
 
@@ -312,7 +312,7 @@ class BugzillaBackendTest(unittest.TestCase):
         # blocks / issue_links
         event = all_events[12]
         self.assertEqual(event.status, "issue_links")
-        self.assertEqual(event.old_value, {'issue_id': related_issue_41818.id, 'type': 'Blocker', 'effect': 'blocks'})
+        self.assertEqual(event.old_value, {'issue_id': '41818', 'type': 'Blocker', 'effect': 'blocks'})
         self.assertEqual(event.new_value, None)
         self.assertEqual(event.created_at, datetime.datetime(2001, 2, 4, 6, 20, 32))
         self.assertEqual(event.author_id, conor_user.id)
@@ -344,15 +344,34 @@ class BugzillaBackendTest(unittest.TestCase):
 
     @mock.patch('issueshark.backends.helpers.bugzillaagent.BugzillaAgent.get_user')
     def test_store_events_two_times(self, get_user_mock):
-        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id)
+        bugzilla_backend = BugzillaBackend(self.conf, self.issues_system_id, self.project_id, None)
         bugzilla_backend.bugzilla_agent = BugzillaAgent(None, self.conf)
-        issue = Issue(external_id="TEST", issue_system_id=self.issues_system_id).save()
+        bugzilla_backend._transform_issue(self.issue_95, self.issue_95_comments)
+        bugzilla_backend.save_issues()
+        stored_issue = Issue.objects(external_id="95").get()
 
         get_user_mock.side_effect = [self.craig_user, self.conor_user, self.craig_user, self.conor_user,
                                      self.conor_user]
-        bugzilla_backend._store_events(self.issue_95_history, self.issue_95, issue)
-        bugzilla_backend._store_events(self.issue_95_history, self.issue_95, issue)
+        bugzilla_backend._store_events(self.issue_95_history, self.issue_95, stored_issue)
+        bugzilla_backend._store_events(self.issue_95_history, self.issue_95, stored_issue)
+        bugzilla_backend.save_issues()
 
-        all_events = Event.objects.all()
+        all_events = IssueEvent.objects.all()
 
         self.assertEqual(16, len(all_events))
+
+    def test_update_with_change(self):
+        """
+        In this test, we save an issue, make a modification to the same issue, and attempt to save it again.
+        We expect the system to recognize the change and save the issue as a different one, without overriding the original
+        """
+        bugzilla_backend1 = BugzillaBackend(self.conf, self.issues_system_id, self.project_id, None)
+        bugzilla_backend1._transform_issue(self.issue_1, self.issue_95_comments)
+        bugzilla_backend1.save_issues()
+        bugzilla_backend2 = BugzillaBackend(self.conf, self.issues_system_id, self.project_id, None)
+        self.issue_1['component'] = 'test'
+        bugzilla_backend2._transform_issue(self.issue_1, self.issue_95_comments)
+        bugzilla_backend2.save_issues()
+
+        stored_issues = Issue.objects.all()
+        self.assertEqual(len(stored_issues), 2)

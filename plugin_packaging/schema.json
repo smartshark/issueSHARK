@@ -24,9 +24,10 @@
             {
                "type":"DateType",
                "logical_type":"Date",
-               "field_name":"last_updated",
-               "desc": "Date on which data was gathered the last time from this issue system"
+               "field_name":"collection_date",
+               "desc": "Date on which data was gathered from this system"
             }
+
          ],
          "desc": "Issue system of the project (e.g. JIRA, Bugzilla)",
          "collection_name":"issue_system"
@@ -208,11 +209,11 @@
                 ]
             },
             {
-               "type":"ObjectIdType",
+               "type":"StringType",
                "logical_type":"RID",
                "reference_to": "issue",
                "field_name":"parent_issue_id",
-               "desc": "ObjectID that links to a parent issue (if available)"
+               "desc": "ID that links to a parent issue (if available)"
             },
             {
                "type":"IntegerType",
@@ -259,7 +260,6 @@
             {  
                "type":"ObjectIdType",
                "logical_type":"RID",
-               "reference_to": "issue",
                "field_name":"issue_id",
                "desc": "ObjectID of the issue to which this comment belongs"
             },
@@ -337,6 +337,12 @@
                "logical_type":"Name",
                "field_name":"new_value",
                "desc": "New value of the issue after the event"
+            },
+            {
+               "type":"StringType",
+               "logical_type":"RID",
+               "field_name":"commit_id",
+               "desc": "Id that links to a commit (if available)"
             }
          ],
          "desc": "This collection contains all events on all issues that were collected. An event is an action like the changing of a title or similar",
