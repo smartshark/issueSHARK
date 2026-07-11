@@ -17,7 +17,7 @@ setup(
     install_requires=['mongoengine>=0.23.0', 'pymongo', 'requests>=2.10.0', 'oauthlib>=3.0.0',
                       'cryptography>=1.3.4', 'python-dateutil', 'validate_email',
                       'jira==2.0.0', 
-                      'pycoshark @ git+https://github.com/smartshark/pycoSHARK.git@v2.0.0', 
+                      'pycoshark @ git+https://github.com/smartshark/pycoSHARK.git@2.0.0', 
                       'mock', 
                       'deepdiff<=5.5.0'],
     url='https://github.com/smartshark/issueSHARK',
