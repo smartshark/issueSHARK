@@ -8,8 +8,7 @@ import argparse
 from issueshark.backends.basebackend import BaseBackend
 from issueshark.config import Config, ConfigValidationException
 from issueshark.issueshark import IssueSHARK
-from pycoshark.utils import get_base_argparser, delete_last_system_data_on_failure
-
+from pycoshark.utils import get_base_argparser
 
 def setup_logging(default_path=os.path.dirname(os.path.realpath(__file__))+"/loggerConfiguration.json",
                   default_level=logging.INFO):
@@ -27,6 +26,11 @@ def setup_logging(default_path=os.path.dirname(os.path.realpath(__file__))+"/log
         else:
             logging.basicConfig(level=default_level)
 
+        sys.stdout = sys.stderr if '--help' in sys.argv else sys.stdout 
+        logging.getLogger("main").handlers = [logging.StreamHandler(sys.stdout)]
+        logging.getLogger("main").propagate = False
+        logging.getLogger("backend").handlers = [logging.StreamHandler(sys.stdout)]
+        logging.getLogger("backend").propagate = False
 
 def start():
     """
@@ -34,7 +38,7 @@ def start():
     :class:`~issueshark.issueshark.IssueSHARK`
     """
     setup_logging()
-    logger = logging.getLogger("main")
+    logger = logging.getLogger('main')
     logger.info("Starting issueSHARK...")
 
     try:
@@ -72,12 +76,12 @@ def start():
         issueshark.start(cfg)
     except(KeyboardInterrupt, Exception) as e:
         logger.error(f"Program did not run successfully. Reason:{e}")
-        logger.info(f"Deleting uncompleted data .....")
-        delete_last_system_data_on_failure('issue_system', cfg.tracking_url, db_user=cfg.user,
-                                                 db_password=cfg.password,
-                                                 db_hostname=cfg.host, db_port=cfg.port,
-                                                 db_authentication_db=cfg.authentication_db,
-                                                db_ssl=cfg.ssl_enabled, db_name=cfg.database)
+        # logger.info(f"Deleting uncompleted data .....")
+        # delete_last_system_data_on_failure('issue_system', cfg.tracking_url, db_user=cfg.user,
+        #                                          db_password=cfg.password,
+        #                                          db_hostname=cfg.host, db_port=cfg.port,
+        #                                          db_authentication_db=cfg.authentication_db,
+        #                                         db_ssl=cfg.ssl_enabled, db_name=cfg.database)
 
 
 if __name__ == "__main__":

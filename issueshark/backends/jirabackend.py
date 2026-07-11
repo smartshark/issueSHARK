@@ -146,7 +146,8 @@ class JiraBackend(BaseBackend):
         """
         for issue_id, issue in self.parsed_issues['issues'].items():
             try:
-                issue = Issue.objects.get(issue_system_ids=self.issue_system_id, external_id=issue_id)
+                # issue = Issue.objects.get(issue_system_ids=self.issue_system_id, external_id=issue_id)
+                issue = Issue.objects.get(issue_system_id=self.issue_system_id, external_id=issue_id)
             except DoesNotExist:
                 continue
             for link_issue in issue.issue_links:
@@ -307,10 +308,12 @@ class JiraBackend(BaseBackend):
         try:
             # We can not return here, as the issue might be updated. This means, that the title could be updated
             # as well as comments and new events
+            # mongo_issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=self.issue_id).get()
             mongo_issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=self.issue_id).get()
             self.old_issues['issues'][self.issue_id] = mongo_issue
         except DoesNotExist:
             mongo_issue = None
+        # new_issue = Issue(issue_system_ids=[self.issue_system_id], external_id=jira_issue.key)
         new_issue = Issue(issue_system_ids=[self.issue_system_id], external_id=jira_issue.key)
 
         for at_name_jira, at_name_mongo in self.jira_mongo_terminology_mapping.items():
@@ -718,6 +721,8 @@ class JiraBackend(BaseBackend):
         """
         issue_id = None
         try:
+            # issue_id = Issue.objects(issue_system_ids=self.issue_system_id, external_id=str(external_id)).only(
+            #     'id').get().id
             issue_id = Issue.objects(issue_system_ids=self.issue_system_id, external_id=str(external_id)).only(
                 'id').get().id
         except DoesNotExist:
@@ -725,7 +730,7 @@ class JiraBackend(BaseBackend):
         if not issue_id:
             try:
                 issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=str(external_id)).get()
-                issue.issue_system_ids.append(self.issue_system_id)
+                issue.issue_system_id.append(self.issue_system_id)
                 issue.save()
                 issue_id = issue.id
             except DoesNotExist:

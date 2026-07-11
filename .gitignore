@@ -94,3 +94,5 @@ ENV/
 
 .idea
 plugin_packaging/*.tar
+
+.DS_store

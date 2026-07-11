@@ -125,7 +125,8 @@ class GithubBackendTest(unittest.TestCase):
         gh_backend.save_issues()
 
         mongo_issue = Issue.objects(external_id='6131').get()
-        self.assertEqual([self.issues_system_id], mongo_issue.issue_system_ids)
+        # self.assertEqual([self.issues_system_id], mongo_issue.issue_system_ids)
+        self.assertEqual([self.issues_system_id], mongo_issue.issue_system_id)
         self.assertEqual('Inexplainable dependency conflict', mongo_issue.title)
         self.assertEqual('Steps to reproduce:\r\n\r\nhttps://github.com/Berdir/strict-dependency-bug\r\n\r\nOutput:'
                          '\r\n\r\n```\r\nYour requirements could not be resolved to an installable set of packages.'
@@ -160,7 +161,8 @@ class GithubBackendTest(unittest.TestCase):
         gh_backend.store_issue(self.issue_6050)
         gh_backend.save_issues()
         mongo_issue = Issue.objects(external_id='6050').get()
-        self.assertEqual([self.issues_system_id], mongo_issue.issue_system_ids)
+        # self.assertEqual([self.issues_system_id], mongo_issue.issue_system_ids)
+        self.assertEqual([self.issues_system_id], mongo_issue.issue_system_id)
         self.assertEqual("Local path package does not autoload classes", mongo_issue.title)
         self.assertEqual("I'm about to write post about local packages, but there is one thing that blocks me.\r\n\r\nI "
                          "use [path local package](https://getcomposer.org/doc/05-repositories.md#path).\r\n\r\nI need "

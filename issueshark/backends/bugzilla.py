@@ -112,7 +112,8 @@ class BugzillaBackend(BaseBackend):
         """
         for issue_id, issue in self.parsed_issues['issues'].items():
             try:
-                mongo_issue = Issue.objects.get(issue_system_ids=self.issue_system_id, external_id=issue_id)
+                # mongo_issue = Issue.objects.get(issue_system_ids=self.issue_system_id, external_id=issue_id)
+                mongo_issue = Issue.objects.get(issue_system_id=self.issue_system_id, external_id=issue_id)
             except DoesNotExist:
                 continue
             for link_issue in mongo_issue.issue_links:
@@ -541,7 +542,7 @@ class BugzillaBackend(BaseBackend):
         if not issue_id:
             try:
                 issue = Issue.objects(issue_system_ids=self.last_system_id, external_id=str(external_id)).get()
-                issue.issue_system_ids.append(self.issue_system_id)
+                issue.issue_system_id.append(self.issue_system_id)
                 issue.save()
                 issue_id = issue.id
             except DoesNotExist:

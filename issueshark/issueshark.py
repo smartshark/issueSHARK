@@ -11,7 +11,6 @@ from pycoshark.utils import create_mongodb_uri_string
 
 logger = logging.getLogger("main")
 
-
 class IssueSHARK(object):
     """
     Main application
@@ -37,6 +36,12 @@ class IssueSHARK(object):
         :param cfg: holds all configuration parameters. Object of class :class:`~issueshark.config.Config`
         """
         logger.setLevel(cfg.get_debug_level())
+        sys.stdout = sys.stderr if '--help' in sys.argv else sys.stdout 
+        logging.basicConfig(stream=sys.stdout, level=cfg.get_debug_level(), force=True)
+        logging.getLogger("main").handlers = [logging.StreamHandler(sys.stdout)]
+        logging.getLogger("main").propagate = False
+        logging.getLogger("backend").handlers = [logging.StreamHandler(sys.stdout)]
+        logging.getLogger("backend").propagate = False
         start_time = timeit.default_timer()
 
         # Connect to mongodb

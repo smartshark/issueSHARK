@@ -108,7 +108,8 @@ class BugzillaBackendTest(unittest.TestCase):
         creator = People.objects(email="anand@avnisoft.com").get()
         assignee = People.objects(email="notifications@ant.apache.org").get()
 
-        self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        # self.assertEqual(stored_issue.issue_system_ids, [self.issues_system_id])
+        self.assertEqual(stored_issue.issue_system_id, self.issues_system_id)
         self.assertEqual(stored_issue.title, "The \"java\" task doesn't work. BugRat Report#85")
         self.assertEqual(stored_issue.desc, "Description text")
         self.assertEqual(stored_issue.created_at, datetime.datetime(2000, 9, 7, 20, 20, 32))
