@@ -67,6 +67,11 @@ class GithubBackend(BaseBackend):
         """
         logger.info("Starting the collection process...")
 
+        since = None
+        page_number = 1
+        seen_issue_ids = set()
+        last_updated_at = None
+
         # Get all issues
         issues = self.get_issues()
 
@@ -79,11 +84,29 @@ class GithubBackend(BaseBackend):
         page_number = 1
         while len(issues) > 0:
             for issue in issues:
+                if 'updated_at' in issue:
+                    last_updated_at = issue['updated_at']
+
+                issue_id = issue['id']
+                if issue_id in seen_issue_ids:
+                    continue
+                seen_issue_ids.add(issue_id)
+
                 mongo_issue = self.store_issue(issue)
                 self._process_comments(mongo_issue)
                 self._process_events(mongo_issue)
-            page_number += 1
-            issues = self.get_issues(pagecount=page_number)
+
+            if len(issues) < 100:
+                break
+
+            if page_number >= 90 and last_updated_at:
+                logger.info("Approaching 10k pagination limit. Resetting to page 1 with since=%s" % last_updated_at)
+                page_number = 1
+                since = last_updated_at
+            else:
+                page_number += 1
+
+            issues = self.get_issues(pagecount=page_number, since=since)
 
         self.save_issues()
 
@@ -265,7 +288,7 @@ class GithubBackend(BaseBackend):
             self.parsed_issues['comments'][self.issue_id][str(raw_comment['id'])] = new_comment
             self.check_diff_comment_event(mongo_comment, new_comment)
 
-    def get_issues(self, search_state='all', sorting='asc', pagecount=1):
+    def get_issues(self, search_state='all', sorting='asc', pagecount=1, since=None):
         """
         Gets issues from the github API
 
@@ -273,11 +296,14 @@ class GithubBackend(BaseBackend):
         :param start_date: date from which issues should be collected
         :param sorting: sorting of the issues
         :param pagecount: page number
+        :param since: ISO timestamp to fetch issues updated at or after this time
         """
         # Creates the target url for getting the issues
         target_url = self.config.tracking_url + "?state=" + search_state + "&page=" + str(pagecount) \
             + "&per_page=100&sort=updated&direction=" + sorting
 
+        if since:
+            target_url += "&since=" + str(since)
 
         issues = self._send_request(target_url)
         return issues
@@ -292,7 +318,17 @@ class GithubBackend(BaseBackend):
         if user_url in self.people:
             return self.people[user_url]
 
-        raw_user = self._send_request(user_url)
+        if not hasattr(self, '_people_max_length'):
+            self._people_max_length = {
+                field: getattr(People._fields.get(field), 'max_length', None)
+                for field in ('name', 'email', 'username')
+            }
+
+        try:
+            raw_user = self._send_request(user_url)
+        except Exception:
+            login = user_url.split('/')[-1]
+            raw_user = {'name': login, 'login': login, 'email': 'null'}
         name = raw_user['name']
 
         if name is None:
@@ -302,10 +338,28 @@ class GithubBackend(BaseBackend):
         if email is None:
             email = 'null'
 
+        username = raw_user['login']
+        if username is None:
+            username = 'null'
+
+        def _truncate(value, field):
+            max_len = self._people_max_length[field]
+            if max_len and len(value) > max_len:
+                logger.warning(
+                    "%s exceeds %s limit (%d chars) for %s; truncating.",
+                    field, People.__name__, max_len, user_url
+                )
+                return value[:max_len - 3] + '...'
+            return value
+
+        name = _truncate(name, 'name')
+        email = _truncate(email, 'email')
+        username = _truncate(username, 'username')
+
         people_id = People.objects(
             name=name,
             email=email
-        ).upsert_one(name=name, email=email, username=raw_user['login']).id
+        ).upsert_one(name=name, email=email, username=username).id
         self.people[user_url] = people_id
         return people_id
 
@@ -326,32 +380,39 @@ class GithubBackend(BaseBackend):
 
         # Make the request
         tries = 1
-        while tries <= 3:
+        max_tries = 5
+        while tries <= max_tries:
             logger.debug("Sending request to url: %s (Try: %s)" % (url, tries))
-            resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
+            time.sleep(0.3)
+
+            try:
+                resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth, timeout=30)
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                # Handles RemoteDisconnected and socket drops
+                wait_time = tries * 5
+                logger.warning(f"Connection dropped ({e}). Retrying in {wait_time}s... (Try {tries}/{max_tries})")
+                time.sleep(wait_time)
+                tries += 1
+                continue
+
+            if ('X-RateLimit-Remaining' in resp.headers and int(resp.headers['X-RateLimit-Remaining']) <= 1) or resp.status_code in [403, 429]:
+                if 'X-RateLimit-Reset' in resp.headers:
+                    time_when_reset = datetime.datetime.fromtimestamp(float(resp.headers['X-RateLimit-Reset']))
+                    now = datetime.datetime.now()
+                    waiting_time = ((time_when_reset - now).total_seconds()) + 10
+
+                    if waiting_time > 10:
+                        logger.info("Github API limit exceeded. Waiting for %0.5f seconds..." % waiting_time)
+                        time.sleep(waiting_time)
+                        tries = 1
+                        if resp.status_code in [403, 429]:
+                            continue
 
             if resp.status_code != 200:
                 logger.error("Problem with getting data via url %s. Error: %s" % (url, resp.text))
                 tries += 1
                 time.sleep(2)
             else:
-                # It can happen that we exceed the github api limit. If we have only 1 request left we will wait
-                if 'X-RateLimit-Remaining' in resp.headers and int(resp.headers['X-RateLimit-Remaining']) <= 1:
-
-                    # We get the reset time (UTC Epoch seconds)
-                    time_when_reset = datetime.datetime.fromtimestamp(float(resp.headers['X-RateLimit-Reset']))
-                    now = datetime.datetime.now()
-
-                    # Then we substract and add 10 seconds to it (so that we do not request directly at the threshold
-                    waiting_time = ((time_when_reset-now).total_seconds())+10
-
-                    logger.info("Github API limit exceeded. Waiting for %0.5f seconds..." % waiting_time)
-                    time.sleep(waiting_time)
-
-                    resp = requests.get(url, headers=headers, proxies=self.config.get_proxy_dictionary(), auth=auth)
-
-                # logger.debug('Got response: %s' % resp.json())
-
                 return resp.json()
 
         raise RequestException("Problem with getting data via url %s." % url)
